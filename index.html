@@ -127,11 +127,17 @@ body{
 .feedback.ok{color:var(--green);}
 .feedback.bad{color:var(--coral);}
 
-/* division — posed, written layout (no guided questions) */
-.divhead{display:flex; align-items:flex-end; justify-content:center; gap:12px; margin-bottom:4px;}
+/* division — French "potence" layout: quotient built up UNDER the divisor, not above the dividend */
+.divhead{display:flex; align-items:flex-start; justify-content:center; gap:14px; margin-bottom:4px; font-family:"Cascadia Code","Courier New",monospace;}
+.dividend{font-size:clamp(1.5rem,7vw,2rem); font-weight:800; letter-spacing:2px; padding-top:.2rem;}
+.dividend span{display:inline-block; transition:color .3s;}
+.dividend span.dim{color:var(--grey);}
+.dividend span.used{color:var(--ink);}
 .cell.used{color:var(--ink);}
-.potence{border-left:3px solid var(--ink); border-bottom:3px solid var(--ink); padding:2px 10px 10px 10px; min-width:56px; text-align:center; margin-bottom:2px;}
+.potence{border-left:3px solid var(--ink); border-bottom:3px solid var(--ink); padding:2px 10px 10px 10px; min-width:64px; text-align:center; margin-bottom:2px;}
 .potence .divisor{font-size:clamp(1.3rem,6vw,1.7rem); font-weight:800;}
+.quotientline{display:flex; gap:4px; justify-content:center; margin-top:8px; min-height:clamp(1.8rem,7vw,2.2rem);}
+.quotientline .cell{width:clamp(1.8rem,7vw,2.2rem); height:clamp(1.8rem,7vw,2.2rem); font-size:clamp(1rem,4.5vw,1.3rem);}
 
 .divlog{margin-top:12px;}
 .step-block{padding:8px 6px; margin-bottom:6px; border-radius:12px;}
@@ -1091,47 +1097,34 @@ function DivExercise(op, mode){
   this.dividend=op.dividend; this.divisor=op.divisor;
   this.dStr=String(this.dividend);
   this.steps=computeDivisionSteps(this.dividend,this.divisor);
-  let consumed=0;
-  this.steps.forEach(s=>{ consumed += s.brought.length; s.endCol = consumed-1; });
   this.stepIdx=0;
+  this.charsUsed=0;
   this.hadError=false;
 }
 
-// written like on paper: dividend + divisor + growing quotient line, then one subtraction
-// block per step (product, then remainder) — no explanatory "how many times does X go into Y" prompts.
+// French "potence" layout, as actually taught: dividend │ divisor, with the quotient built up
+// UNDER the divisor (not above the dividend) — one subtraction block per step below.
 DivExercise.prototype.render = function(panel){
   panel.innerHTML='';
-  const cols = this.dStr.length;
 
   const head=document.createElement('div'); head.className='divhead';
-  const gridWrap=document.createElement('div'); gridWrap.className='gridwrap';
-  const grid=document.createElement('div'); grid.className='mgrid';
-  grid.style.gridTemplateColumns = `repeat(${cols}, clamp(2rem,8vw,2.6rem))`;
 
-  // quotient row: one cell per dividend column, only columns matching a step's last digit get an input
-  this.qCells = [];
-  for(let col=0; col<cols; col++){
-    const c = makeCell('qcell');
-    c.style.gridColumn = col+1;
-    grid.appendChild(c);
-    const stepIdxForCol = this.steps.findIndex(s=>s.endCol===col);
-    if(stepIdxForCol>=0) this.qCells[stepIdxForCol] = c;
-  }
-  // dividend row (digits dim until "brought down"; in test mode everything is in play from the start)
-  this.digitSpans = this.dStr.split('').map((ch,col)=>{
-    const c = makeCell(this.testMode ? 'static used' : 'static dim'); c.textContent=ch; c.style.gridColumn=col+1;
-    grid.appendChild(c);
-    return c;
+  const dividendEl=document.createElement('div'); dividendEl.className='dividend';
+  this.digitSpans = this.dStr.split('').map(ch=>{
+    const s=document.createElement('span'); s.textContent=ch; s.className = this.testMode ? 'used' : 'dim'; return s;
   });
-
-  gridWrap.appendChild(grid);
-  head.appendChild(gridWrap);
+  this.digitSpans.forEach(s=>dividendEl.appendChild(s));
+  head.appendChild(dividendEl);
 
   const potence=document.createElement('div'); potence.className='potence';
-  potence.innerHTML = `<div class="divisor">${this.divisor}</div>`;
+  const divisorEl=document.createElement('div'); divisorEl.className='divisor'; divisorEl.textContent=this.divisor;
+  potence.appendChild(divisorEl);
+  const qline=document.createElement('div'); qline.className='quotientline';
+  potence.appendChild(qline);
   head.appendChild(potence);
 
   panel.appendChild(head);
+  this.qline = qline;
 
   const log=document.createElement('div'); log.className='divlog';
   panel.appendChild(log);
@@ -1160,15 +1153,20 @@ DivExercise.prototype.render = function(panel){
   }
 };
 
-// builds one step's quotient box + subtraction block (product row, line, remainder row).
-// pure construction — visibility/enabled state is the caller's job.
+DivExercise.prototype.markUsedDigits = function(count){
+  for(let i=0;i<count;i++){
+    if(this.digitSpans[this.charsUsed]){ this.digitSpans[this.charsUsed].className='used'; this.charsUsed++; }
+  }
+};
+
+// builds one step's quotient digit box (appended under the divisor) + subtraction block
+// (product row, line, remainder row). Pure construction — visibility/enabled is the caller's job.
 DivExercise.prototype.buildStepBlock = function(stepIdx){
   const step = this.steps[stepIdx];
-  const qCell = this.qCells[stepIdx];
-  qCell.innerHTML='';
-  const qInput = document.createElement('input');
-  qInput.type='tel'; qInput.inputMode='numeric'; qInput.maxLength=1; qInput.autocomplete='off';
-  qCell.appendChild(qInput);
+
+  const qCell = makeInputCell('qcell');
+  this.qline.appendChild(qCell.wrap);
+  const qInput = qCell.input;
 
   const block=document.createElement('div'); block.className='step-block active-step';
 
@@ -1206,10 +1204,7 @@ DivExercise.prototype.buildStepBlock = function(stepIdx){
 
 DivExercise.prototype.activateStep = function(){
   const step = this.steps[this.stepIdx];
-  this.digitSpans.forEach((s,i)=>{
-    s.classList.toggle('used', i<=step.endCol);
-    s.classList.toggle('dim', i>step.endCol);
-  });
+  this.markUsedDigits(step.brought.length);
   const built = this.buildStepBlock(this.stepIdx);
   this.qInput = built.qInput; this.currentBlock = built.block;
   this.prodInputs = built.prodInputs; this.prodTarget = built.prodTarget;
