@@ -112,6 +112,17 @@ body{
 .cell input.correct{border-color:var(--green); background:#E8F7EA; color:var(--green);}
 .cell input.wrong{border-color:var(--coral); background:#FDEAEA; animation:shake .3s;}
 .cell.carry input{font-size:.85rem; font-weight:600; color:var(--purple); background:transparent; border:1.5px dashed #D6D2EA; height:1.5rem; width:1.5rem;}
+
+/* subtraction: the borrow mark sits tucked in front of its own digit, in the same row — not pulled
+   out into a separate row above everything. */
+.subcell{position:relative;}
+.subcell .maindigit{font-weight:800; font-size:inherit;}
+.subcell .prefixbox{position:absolute; top:-3px; left:-1px; width:1.05rem; height:1.05rem; font-size:.6rem;
+  font-weight:700; text-align:center; padding:0; border:1.5px dashed #D6D2EA; border-radius:4px;
+  background:#F7F6FC; color:var(--purple); z-index:2;}
+.subcell .prefixbox:focus{outline:none; border-color:var(--purple);}
+.subcell .prefixbox.correct{border-color:var(--green); color:var(--green); background:#E8F7EA;}
+.subcell .prefixbox.wrong{border-color:var(--coral); animation:shake .3s;}
 .hline{grid-column:1/-1; border-bottom:3px solid var(--ink); margin:2px 0 4px;}
 @keyframes shake{0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);}}
 
@@ -149,6 +160,11 @@ body{
 .step-block{padding:4px 0 8px; text-align:right;}
 .step-block.locked{opacity:.8;}
 .step-block .l0{font-size:.72rem; font-weight:700; color:#8884a0; text-align:right; margin-bottom:2px;}
+.currentrow{font-size:clamp(1.1rem,5vw,1.4rem); font-weight:800; margin:2px 0 4px;}
+.currentrow span{display:inline-block; padding:0 1px;}
+.currentrow .carried{color:var(--ink);}
+.currentrow .brought{color:var(--teal); transform:translateY(3px); animation:dropdown .3s ease;}
+@keyframes dropdown{from{transform:translateY(-6px); opacity:0;} to{transform:translateY(3px); opacity:1;}}
 .step-block .divnote{color:var(--coral); font-style:italic; font-weight:600;}
 .digitrow{display:flex; justify-content:flex-end; align-items:center; gap:3px; margin:2px 0;}
 .digitrow .minussign{font-weight:800; color:var(--ink); font-size:1.1rem; margin-right:2px;}
@@ -779,21 +795,25 @@ function sumColumnsWithCarries(nums, totalCols){
 // subtracting S from M (same digit count, S left-padded with zeros), column by column from the right.
 // same shape as multiplyWithCarries: the borrow used while computing column i is written above column
 // i-1 (one place to the left) — that's borrowsIn[i-1], set while processing column i.
+// "compensation" method (méthode par cassage), as actually taught: instead of reducing the
+// minuend's next digit by 1, add 1 to the subtrahend's next digit — same result, but the marks
+// go: a small "1" in front of the current top digit (making e.g. 5 read as 15), and a small "+1"
+// in front of the PREVIOUS (more significant) bottom digit. borrowAt[i] = both of those at once:
+// it's the "+1 in front of the top digit" mark for column i, AND the "+1 in front of the bottom
+// digit" mark for column i-1 — one borrow event, shown in two places.
 function subtractWithBorrows(Mdigits, Sdigits){
   const n = Mdigits.length;
   const digitsOut = new Array(n);
-  const borrowsIn = new Array(n).fill(0);
-  let borrow = 0;
+  const borrowAt = new Array(n).fill(0);
+  let carry = 0;
   for(let i=n-1;i>=0;i--){
-    let top = Mdigits[i] - borrow;
-    const s = Sdigits[i] || 0;
-    let borrowOut = 0;
-    if(top < s){ top += 10; borrowOut = 1; }
+    const s = (Sdigits[i]||0) + carry;
+    let top = Mdigits[i];
+    if(top < s){ top += 10; borrowAt[i] = 1; carry = 1; }
+    else { carry = 0; }
     digitsOut[i] = top - s;
-    if(i>0) borrowsIn[i-1] = borrowOut;
-    borrow = borrowOut;
   }
-  return { digitsOut, borrowsIn };
+  return { digitsOut, borrowAt };
 }
 
 /* =========================================================
@@ -1190,8 +1210,19 @@ DivExercise.prototype.buildStepBlock = function(stepIdx){
     block.appendChild(note);
   }
 
-  const l0=document.createElement('div'); l0.className='l0'; l0.textContent=`On pose ${step.current}`;
-  block.appendChild(l0);
+  // instead of a text label ("On pose 23"), show the actual digits: the carried-over remainder
+  // in normal ink, and the digit(s) just brought down from the dividend highlighted + nudged down,
+  // so it visually reads as "this one just dropped in from above" rather than appearing from nowhere.
+  const curRow=document.createElement('div'); curRow.className='digitrow currentrow';
+  const curDigits = digits(step.current);
+  const newCount = step.brought.length;
+  curDigits.forEach((d,i)=>{
+    const span=document.createElement('span');
+    span.textContent=d;
+    span.className = (i >= curDigits.length-newCount) ? 'brought' : 'carried';
+    curRow.appendChild(span);
+  });
+  block.appendChild(curRow);
 
   const prodRow=document.createElement('div'); prodRow.className='digitrow minusrow';
   const minusSign=document.createElement('span'); minusSign.className='minussign'; minusSign.textContent='−';
@@ -1328,45 +1359,63 @@ function SubtractionExercise(op, mode){
   const sub = subtractWithBorrows(this.aD, bPadded);
   this.result = this.a - this.b;
   this.resultDigits = sub.digitsOut; // length = aD.length, may include a leading 0
-  this.borrowsIn = sub.borrowsIn;
+  this.borrowAt = sub.borrowAt; // length aD.length; borrowAt[0] is always 0 since a >= b
   this.hadError = false;
 }
+
+// one grid cell = an optional tiny prefix box (the "small 1 in front of the digit") + the main digit.
+// digit may be null for a subtrahend column that's genuinely blank (not a leading zero).
+SubtractionExercise.prototype.makeSubCell = function(digit, needsPrefix, prefixCollector){
+  const cell=document.createElement('div'); cell.className='cell subcell';
+  if(needsPrefix){
+    const p=document.createElement('input');
+    p.type='tel'; p.inputMode='numeric'; p.maxLength=1; p.autocomplete='off';
+    p.className='prefixbox';
+    cell.appendChild(p);
+    prefixCollector.push(p);
+  }
+  if(digit!==null && digit!==undefined){
+    const span=document.createElement('span'); span.className='maindigit'; span.textContent=digit;
+    cell.appendChild(span);
+  }
+  return cell;
+};
 
 SubtractionExercise.prototype.render = function(panel){
   panel.innerHTML='';
   const gridWrap = document.createElement('div'); gridWrap.className='gridwrap';
   const grid = document.createElement('div'); grid.className='mgrid';
   const cols = this.aD.length;
-  grid.style.gridTemplateColumns = `1.4rem repeat(${cols}, clamp(2rem,8vw,2.6rem))`;
+  grid.style.gridTemplateColumns = `1.4rem repeat(${cols}, clamp(2.2rem,9vw,2.8rem))`;
   this.grid = grid; this.cols = cols;
 
   const placeRow = (rowEls, colOffset)=>{
     rowEls.forEach((el,i)=>{ el.style.gridColumn = (2 + colOffset + i); grid.appendChild(el); });
   };
 
-  // borrow row, directly above the minuend — a single subtraction has no shifted passes to
-  // conflict with, so (unlike multiplication) one row of boxes is all that's ever needed.
+  // borrow marks live directly in the minuend and subtrahend rows themselves — a small box tucked
+  // in front of each digit — not pulled out into a separate row above everything.
   const showBorrows = state.settings.carry && cols>1;
-  this.borrowInputs = [];
-  if(showBorrows){
-    const borrowWrap=[];
-    for(let i=0;i<cols-1;i++){ const c=makeInputCell('carry'); borrowWrap.push(c.wrap); this.borrowInputs.push(c.input); }
-    placeRow(borrowWrap, 0);
-    wireAutoAdvance(this.borrowInputs);
+  this.topPrefixInputs = [];
+  this.bottomPrefixInputs = [];
+
+  // minuend row: column i gets a top-prefix box for i=1..cols-1 (never the leftmost column).
+  const signA = makeCell('sign'); signA.style.gridColumn=1; grid.appendChild(signA);
+  const rowA = this.aD.map((d,i)=> this.makeSubCell(d, showBorrows && i>0, this.topPrefixInputs));
+  placeRow(rowA, 0);
+
+  // subtrahend row: column i gets a bottom-prefix box for i=0..cols-2 (never the rightmost column).
+  // digits only render for the columns the subtrahend actually has — earlier columns stay blank.
+  const signB = makeCell('sign'); signB.textContent='−'; signB.style.gridColumn=1; grid.appendChild(signB);
+  const blankCols = cols - this.bD.length;
+  const rowB = [];
+  for(let i=0;i<cols;i++){
+    const d = i>=blankCols ? this.bD[i-blankCols] : null;
+    rowB.push(this.makeSubCell(d, showBorrows && i<cols-1, this.bottomPrefixInputs));
   }
+  placeRow(rowB, 0);
 
-  // minuend row
-  const rowA=[makeCell('sign')];
-  this.aD.forEach(d=>{ const c=makeCell('static'); c.textContent=d; rowA.push(c); });
-  placeRow(rowA.slice(1), 0);
-  grid.appendChild(rowA[0]); rowA[0].style.gridColumn=1;
-
-  // subtrahend row
-  const signB = makeCell('sign'); signB.textContent='−'; signB.style.gridColumn=1;
-  grid.appendChild(signB);
-  const rowB=[];
-  this.bD.forEach(d=>{ const c=makeCell('static'); c.textContent=d; rowB.push(c); });
-  placeRow(rowB, cols - this.bD.length);
+  if(showBorrows){ wireAutoAdvance(this.topPrefixInputs); wireAutoAdvance(this.bottomPrefixInputs); }
 
   const hr=document.createElement('div'); hr.className='hline'; grid.appendChild(hr);
 
@@ -1395,16 +1444,18 @@ SubtractionExercise.prototype.render = function(panel){
   checkBtn.addEventListener('click', ()=> this.check());
 
   setTimeout(()=>{
-    const first = showBorrows ? this.borrowInputs[0] : resInput[0];
+    const first = (showBorrows && this.topPrefixInputs.length) ? this.topPrefixInputs[0] : resInput[0];
     first.focus();
   }, 50);
 };
 
 SubtractionExercise.prototype.groups = function(){
   const groups = [ this.resultInputs ];
-  if(this.borrowInputs.length){
-    groups.push({ inputs:this.borrowInputs, target:this.borrowsIn.slice(0,this.cols-1), isCarry:true });
-  }
+  // the top-prefix at column i and the bottom-prefix at column i-1 are the same borrow event,
+  // so both input sets validate against the same target sequence (borrowAt[1..cols-1]).
+  const target = this.borrowAt.slice(1);
+  if(this.topPrefixInputs.length){ groups.push({ inputs:this.topPrefixInputs, target, isCarry:true }); }
+  if(this.bottomPrefixInputs.length){ groups.push({ inputs:this.bottomPrefixInputs, target, isCarry:true }); }
   return groups;
 };
 
