@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7C4DFF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Camillou — Calculs posés</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦊</text></svg>">
+<style>
+:root{
+  --purple:#7C4DFF; --purple-dark:#5E35B1; --teal:#00BFA5; --yellow:#FFC107;
+  --coral:#FF6B6B; --green:#43A047; --ink:#2E2A45; --paper:#FFFFFF;
+  --bg1:#EDE7F6; --bg2:#E0F7FA; --grey:#B0AEC2; --shadow:0 6px 18px rgba(80,60,150,.18);
+  --radius:18px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:"Segoe UI Rounded","Segoe UI",system-ui,-apple-system,sans-serif;
+  background:linear-gradient(160deg,var(--bg1),var(--bg2) 60%);
+  color:var(--ink); min-height:100vh; overflow-x:hidden;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.wrap{max-width:520px; margin:0 auto; padding:12px 14px 32px; min-height:100vh;}
+.topbar{display:flex; align-items:center; justify-content:space-between; padding:6px 2px 14px;}
+.brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.3rem; color:var(--purple-dark);}
+.brand .fox{font-size:1.6rem;}
+.stat-pill{display:flex; align-items:center; gap:6px; background:var(--paper); border-radius:999px; padding:6px 12px; box-shadow:var(--shadow); font-weight:700; font-size:.95rem;}
+.iconbtn{background:var(--paper); border:none; border-radius:50%; width:38px; height:38px; box-shadow:var(--shadow); font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+.iconbtn:active{transform:scale(.92);}
+
+.screen{display:none; animation:fadein .25s ease;}
+.screen.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.hero{text-align:center; margin:6px 0 20px;}
+.hero .fox-big{font-size:4rem; display:inline-block; animation:bob 2.4s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg);} 50%{transform:translateY(-8px) rotate(3deg);}}
+.hero h1{margin:6px 0 2px; font-size:1.7rem; color:var(--purple-dark);}
+.hero p{margin:0; color:#6b6684; font-size:.95rem;}
+
+.speech{background:var(--paper); border-radius:16px; padding:10px 14px; box-shadow:var(--shadow); font-size:.9rem; margin:12px 0; position:relative; text-align:center; font-weight:600;}
+
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;}
+.opcard{background:var(--paper); border-radius:var(--radius); padding:20px 14px; text-align:center; box-shadow:var(--shadow); cursor:pointer; border:3px solid transparent; transition:transform .15s, border-color .15s;}
+.opcard:active{transform:scale(.96);}
+.opcard .emoji{font-size:2.6rem;}
+.opcard h3{margin:8px 0 4px; font-size:1.1rem;}
+.opcard .sub{font-size:.8rem; color:#8884a0; font-weight:600;}
+.opcard.mult{border-color:#D1C4E9;}
+.opcard.div{border-color:#B2EBF2;}
+.opcard .stars{margin-top:8px; font-size:.95rem; color:var(--yellow);}
+
+.backrow{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+.backrow h2{margin:0; font-size:1.25rem; flex:1; text-align:center; margin-right:38px;}
+
+.levels{display:flex; flex-direction:column; gap:12px;}
+.levelcard{background:var(--paper); border-radius:16px; padding:14px 16px; box-shadow:var(--shadow); display:flex; align-items:center; gap:12px; cursor:pointer; transition:transform .15s;}
+.levelcard:active{transform:scale(.98);}
+.levelcard .num{width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,var(--purple),var(--teal)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0;}
+.levelcard .info{flex:1;}
+.levelcard .info .name{font-weight:800; font-size:1rem;}
+.levelcard .info .desc{font-size:.78rem; color:#8884a0; margin-top:2px;}
+.levelcard .stars{font-size:1rem; color:var(--yellow); white-space:nowrap;}
+
+.daily-banner{display:flex; align-items:center; justify-content:space-between; background:linear-gradient(135deg,var(--teal),#26C6DA); color:#fff; border-radius:16px; padding:16px; margin-top:16px; cursor:pointer; box-shadow:var(--shadow); transition:transform .15s;}
+.daily-banner:active{transform:scale(.97);}
+.db-left{display:flex; align-items:center; gap:12px;}
+.db-emoji{font-size:2rem;}
+.db-title{font-weight:800; font-size:1.05rem;}
+.db-sub{font-size:.78rem; opacity:.92; margin-top:2px;}
+.db-arrow{font-size:1.4rem; font-weight:800;}
+
+.cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.cal-nav div{font-weight:800;}
+.calendar-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+.cal-dow{text-align:center; font-size:.7rem; font-weight:800; color:#8884a0; padding:4px 0;}
+.cal-day{aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:10px; background:#F1EFF9; font-weight:700; font-size:.85rem; color:var(--ink);}
+.cal-day.empty{background:transparent;}
+.cal-day.success{background:#C8E6C9; color:#2E7D32;}
+.cal-day.fail{background:#FFCDD2; color:#C62828;}
+.cal-day.future{opacity:.45;}
+.cal-day.today{box-shadow:0 0 0 2px var(--purple) inset;}
+.cal-day.clickable{cursor:pointer;}
+.cal-legend{display:flex; justify-content:center; gap:14px; margin-top:14px; font-size:.75rem; color:#8884a0;}
+
+.progressbar{height:8px; background:#E3E0F0; border-radius:99px; overflow:hidden; margin-bottom:16px;}
+.progressbar > div{height:100%; background:linear-gradient(90deg,var(--purple),var(--teal)); transition:width .3s;}
+
+.exercise-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-weight:700; font-size:.85rem; color:#6b6684;}
+.streak{color:var(--coral);}
+
+.panel{background:var(--paper); border-radius:var(--radius); padding:18px 12px; box-shadow:var(--shadow); margin-bottom:16px;}
+
+/* multiplication grid */
+.gridwrap{overflow-x:auto; padding:4px 0 10px;}
+.mgrid{display:grid; gap:4px 3px; justify-content:center; font-family:"Cascadia Code","Courier New",monospace;}
+.cell{width:clamp(2rem,8vw,2.6rem); height:clamp(2rem,8vw,2.6rem); display:flex; align-items:center; justify-content:center; font-size:clamp(1.1rem,5vw,1.4rem); font-weight:700;}
+.cell.sign{color:var(--purple); font-size:1.3rem; justify-self:end;}
+.cell.static{color:var(--ink);}
+.cell.dim{color:var(--grey);}
+.cell input{width:100%; height:100%; text-align:center; font-size:inherit; font-family:inherit; font-weight:700; border:2px solid #D6D2EA; border-radius:8px; background:#F7F6FC; color:var(--ink); padding:0;}
+.cell input:focus{outline:none; border-color:var(--purple);}
+.cell input.correct{border-color:var(--green); background:#E8F7EA; color:var(--green);}
+.cell input.wrong{border-color:var(--coral); background:#FDEAEA; animation:shake .3s;}
+.cell.carry input{font-size:.85rem; font-weight:600; color:var(--purple); background:transparent; border:1.5px dashed #D6D2EA; height:1.5rem; width:1.5rem;}
+.hline{grid-column:1/-1; border-bottom:3px solid var(--ink); margin:2px 0 4px;}
+@keyframes shake{0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);}}
+
+.actions{display:flex; gap:10px; justify-content:center; margin-top:6px;}
+.btn{border:none; border-radius:14px; padding:13px 22px; font-size:1rem; font-weight:800; cursor:pointer; box-shadow:var(--shadow); transition:transform .15s;}
+.btn:active{transform:scale(.95);}
+.btn.primary{background:linear-gradient(135deg,var(--purple),var(--purple-dark)); color:#fff;}
+.btn.ghost{background:#fff; color:var(--purple-dark); border:2px solid #D6D2EA;}
+.btn.big{width:100%; padding:16px; font-size:1.1rem;}
+.btn:disabled{opacity:.4; cursor:default;}
+
+.feedback{text-align:center; font-weight:700; min-height:1.4em; margin-top:8px; font-size:.95rem;}
+.feedback.ok{color:var(--green);}
+.feedback.bad{color:var(--coral);}
+
+/* division — posed, written layout (no guided questions) */
+.divhead{display:flex; align-items:flex-end; justify-content:center; gap:12px; margin-bottom:4px;}
+.cell.used{color:var(--ink);}
+.potence{border-left:3px solid var(--ink); border-bottom:3px solid var(--ink); padding:2px 10px 10px 10px; min-width:56px; text-align:center; margin-bottom:2px;}
+.potence .divisor{font-size:clamp(1.3rem,6vw,1.7rem); font-weight:800;}
+
+.divlog{margin-top:12px;}
+.step-block{padding:8px 6px; margin-bottom:6px; border-radius:12px;}
+.step-block.active-step{background:#F7F6FC;}
+.step-block.locked{opacity:.8;}
+.step-block .l0{font-size:.78rem; font-weight:700; color:#8884a0; text-align:right; margin-bottom:4px;}
+.digitrow{display:flex; justify-content:flex-end; gap:3px; margin:2px 0;}
+.divhr{border-bottom:3px solid var(--ink); margin:3px 0; width:100%;}
+.divfinal{text-align:center; font-weight:800; color:var(--purple-dark); padding:10px; font-size:1.05rem;}
+
+.summary{text-align:center;}
+.summary .bigstars{font-size:2.4rem; margin:10px 0;}
+.summary .confettiwrap{position:relative; height:0;}
+.confetti{position:fixed; top:-30px; font-size:1.6rem; pointer-events:none; animation:fall linear forwards; z-index:50;}
+@keyframes fall{to{transform:translateY(105vh) rotate(360deg); opacity:.3;}}
+
+.mutebtn.muted{opacity:.4;}
+.settingsrow{display:flex; justify-content:space-between; align-items:center; padding:10px 4px; font-size:.9rem;}
+.toggle{width:44px; height:26px; border-radius:99px; background:#D6D2EA; position:relative; cursor:pointer; transition:background .2s; border:none;}
+.toggle.on{background:var(--teal);}
+.toggle::after{content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .2s;}
+.toggle.on::after{left:21px;}
+
+.footer-note{text-align:center; font-size:.72rem; color:#9d99b3; margin-top:26px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand"><span class="fox">🦊</span> Camillou</div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div class="stat-pill">⭐ <span id="totalStars">0</span></div>
+      <button class="iconbtn mutebtn" id="muteBtn" title="Son">🔊</button>
+    </div>
+  </div>
+
+  <!-- MENU -->
+  <section class="screen active" id="screen-menu">
+    <div class="hero">
+      <div class="fox-big">🦊</div>
+      <h1>Salut, apprenti calculateur !</h1>
+      <p>Choisis ton entraînement du jour</p>
+    </div>
+    <div class="speech" id="menuSpeech">Prêt à devenir un champion des calculs posés ?</div>
+    <div class="cards">
+      <div class="opcard mult" data-op="mult">
+        <div class="emoji">🧮</div>
+        <h3>Multiplication</h3>
+        <div class="sub">posée, en colonnes</div>
+        <div class="stars" id="multStarsSummary">☆☆☆☆☆</div>
+      </div>
+      <div class="opcard div" data-op="div">
+        <div class="emoji">➗</div>
+        <h3>Division</h3>
+        <div class="sub">posée, pas à pas</div>
+        <div class="stars" id="divStarsSummary">☆☆☆☆☆</div>
+      </div>
+    </div>
+    <div class="daily-banner" id="dailyBanner">
+      <div class="db-left">
+        <div class="db-emoji">📅</div>
+        <div>
+          <div class="db-title">Défi du jour</div>
+          <div class="db-sub" id="dailyBannerSub">10 multiplications + 10 divisions</div>
+        </div>
+      </div>
+      <div class="db-arrow">→</div>
+    </div>
+    <div class="footer-note">camillou.pages.dev — entraîne-toi tous les jours 🦊</div>
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section class="screen" id="screen-levels">
+    <div class="backrow">
+      <button class="iconbtn" id="levelsBack">←</button>
+      <h2 id="levelsTitle">Niveaux</h2>
+    </div>
+    <div class="levels" id="levelsList"></div>
+  </section>
+
+  <!-- CALENDAR / DAILY CHALLENGE -->
+  <section class="screen" id="screen-calendar">
+    <div class="backrow">
+      <button class="iconbtn" id="calBack">←</button>
+      <h2>📅 Défi quotidien</h2>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <div style="font-weight:700; color:var(--coral); margin-bottom:12px;">🔥 <span id="calStreak">0 jour(s) de suite</span></div>
+      <button class="btn primary big" id="calCta">🚀 Commencer le défi du jour</button>
+      <p style="font-size:.78rem; color:#8884a0; margin-top:12px; line-height:1.5;">10 multiplications + 10 divisions posées.<br>3 erreurs maximum autorisées pour chaque, pour valider la journée !</p>
+    </div>
+    <div class="panel">
+      <div class="cal-nav">
+        <button class="iconbtn" id="calPrev">‹</button>
+        <div id="calTitle">Juillet 2026</div>
+        <button class="iconbtn" id="calNext">›</button>
+      </div>
+      <div class="calendar-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span>🟩 Réussi</span><span>🟥 Raté</span><span>⬜ Pas fait</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXERCISE -->
+  <section class="screen" id="screen-exercise">
+    <div class="backrow">
+      <button class="iconbtn" id="exerciseBack">←</button>
+      <h2 id="exerciseTitle">Niveau</h2>
+    </div>
+    <div class="progressbar"><div id="exerciseProgressBar" style="width:0%"></div></div>
+    <div class="exercise-head">
+      <span id="exerciseCounter">Exercice 1/6</span>
+      <span class="streak">🔥 <span id="streakCount">0</span></span>
+    </div>
+
+    <div class="panel" id="exercisePanel"></div>
+
+    <div class="feedback" id="feedback"></div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section class="screen" id="screen-summary">
+    <div class="panel summary">
+      <div class="fox-big">🦊</div>
+      <h2 id="summaryTitle">Bravo !</h2>
+      <div class="bigstars" id="summaryStars">⭐⭐⭐</div>
+      <p id="summaryText">Tu as réussi 5 exercices sur 6 !</p>
+      <div class="actions" style="flex-direction:column;">
+        <button class="btn primary big" id="btnNextLevel">Niveau suivant →</button>
+        <button class="btn ghost big" id="btnReplay">Rejouer ce niveau</button>
+        <button class="btn ghost big" id="btnMenu">Retour au menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS (reset) -->
+  <section class="screen" id="screen-settings">
+    <div class="backrow">
+      <button class="iconbtn" id="settingsBack">←</button>
+      <h2>Réglages</h2>
+    </div>
+    <div class="panel">
+      <div class="settingsrow">
+        <span>Afficher les retenues (multiplication)</span>
+        <button class="toggle on" id="toggleCarry"></button>
+      </div>
+      <div class="settingsrow">
+        <span>Sons</span>
+        <button class="toggle on" id="toggleSound"></button>
+      </div>
+      <div class="settingsrow">
+        <span>Réinitialiser la progression</span>
+        <button class="btn ghost" id="btnReset">Réinitialiser</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- utils ---------- */
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function digits(n){ return String(n).split('').map(Number); }
+function pad(n,len){ return String(n).padStart(len,'0'); }
+
+/* ---------- audio ---------- */
+let audioCtx=null;
+function beep(freq,dur,type){
+  if(!state.settings.sound) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.value=.08;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime+dur);
+    o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function sndOk(){ beep(880,.15,'triangle'); setTimeout(()=>beep(1180,.18,'triangle'),90); }
+function sndBad(){ beep(180,.22,'sawtooth'); }
+function sndLevel(){ [660,880,1100,1320].forEach((f,i)=>setTimeout(()=>beep(f,.2,'triangle'),i*110)); }
+
+/* ---------- state ---------- */
+const DEFAULT_PROGRESS = { mult:[0,0,0,0,0], div:[0,0,0,0,0], points:0, bestStreak:0 };
+const state = {
+  progress: loadProgress(),
+  settings: loadSettings(),
+  calendar: loadCalendar(),
+  op:null, levelIdx:0, mode:'practice', // mode: 'practice' | 'daily-mult' | 'daily-div'
+  series:{ total:6, index:0, errorFree:0 },
+  streak:0,
+  current:null, // current exercise controller
+  daily:null, // {multErrors, divErrors} while a daily challenge is in progress
+  dailyPlan:null, // {mult:[10 level indices], div:[10 level indices]} for the current daily challenge
+  calMonth: new Date().getMonth(), calYear: new Date().getFullYear(),
+};
+
+function loadProgress(){
+  try{
+    const raw = localStorage.getItem('camillou_progress');
+    if(raw) return Object.assign({}, DEFAULT_PROGRESS, JSON.parse(raw));
+  }catch(e){}
+  return Object.assign({}, DEFAULT_PROGRESS);
+}
+function saveProgress(){ localStorage.setItem('camillou_progress', JSON.stringify(state.progress)); }
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem('camillou_settings');
+    if(raw) return Object.assign({carry:true,sound:true}, JSON.parse(raw));
+  }catch(e){}
+  return {carry:true, sound:true};
+}
+function saveSettings(){ localStorage.setItem('camillou_settings', JSON.stringify(state.settings)); }
+function loadCalendar(){
+  try{
+    const raw = localStorage.getItem('camillou_calendar');
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {};
+}
+function saveCalendar(){ localStorage.setItem('camillou_calendar', JSON.stringify(state.calendar)); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+function dateKey(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function todayKey(){ return dateKey(new Date()); }
+
+/* ---------- level definitions ---------- */
+const MULT_LEVELS = [
+  { name:"Débutant", desc:"2 chiffres × 1 chiffre", gen:()=>({a:randInt(11,99), b:randInt(2,9)}) },
+  { name:"Confirmé", desc:"3 chiffres × 1 chiffre", gen:()=>({a:randInt(101,999), b:randInt(2,9)}) },
+  { name:"Expert", desc:"2 chiffres × 2 chiffres", gen:()=>({a:randInt(11,99), b:randInt(11,99)}) },
+  { name:"Maître", desc:"3 chiffres × 2 chiffres", gen:()=>({a:randInt(101,999), b:randInt(11,99)}) },
+  { name:"Champion", desc:"3 chiffres × 3 chiffres", gen:()=>({a:randInt(101,999), b:randInt(101,999)}) },
+];
+
+const DIV_LEVELS = [
+  { name:"Débutant", desc:"÷ 1 chiffre, sans reste", gen:()=>{ const d=randInt(2,9), q=randInt(11,99); return {dividend:d*q, divisor:d}; } },
+  { name:"Confirmé", desc:"÷ 1 chiffre, avec reste", gen:()=>({dividend:randInt(100,999), divisor:randInt(2,9)}) },
+  { name:"Expert", desc:"÷ 1 chiffre, grands nombres", gen:()=>({dividend:randInt(1000,9999), divisor:randInt(2,9)}) },
+  { name:"Maître", desc:"÷ 2 chiffres, sans reste", gen:()=>{ const d=randInt(11,99), q=randInt(11,99); return {dividend:d*q, divisor:d}; } },
+  { name:"Champion", desc:"÷ 2 chiffres, avec reste", gen:()=>({dividend:randInt(1000,9999), divisor:randInt(11,99)}) },
+];
+
+const ENCOURAGE_OK = ["Génial !","Bravo !","Super calcul !","Tu assures !","Impeccable !","Trop fort !","Exact !"];
+const ENCOURAGE_BAD = ["Presque ! Réessaie.","Pas tout à fait...","Encore un essai !","Regarde bien les colonnes.","Courage, tu vas y arriver !"];
+
+// Daily challenge: a fixed mix, no level choice — indices into MULT_LEVELS / DIV_LEVELS
+// (2=Expert, 3=Maître, 4=Champion). Shuffled fresh each time the challenge starts.
+const DAILY_MULT_PLAN = [2,2,2,2,3,3,3,4,4,4]; // 4 Expert + 3 Maître + 3 Champion
+const DAILY_DIV_PLAN  = [2,2,2,2,3,3,3,4,4,4]; // same tiers, mirrored for division
+function shuffled(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=randInt(0,i); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+/* ---------- navigation ---------- */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function levelsForOp(op){ return op==='mult' ? MULT_LEVELS : DIV_LEVELS; }
+function starsArr(op){ return op==='mult' ? state.progress.mult : state.progress.div; }
+
+function starString(n){
+  let s=''; for(let i=0;i<3;i++) s += i<n ? '⭐' : '☆'; return s;
+}
+
+function refreshHeader(){
+  document.getElementById('totalStars').textContent =
+    state.progress.mult.reduce((a,b)=>a+b,0) + state.progress.div.reduce((a,b)=>a+b,0);
+  document.getElementById('multStarsSummary').textContent = '⭐ ' + state.progress.mult.reduce((a,b)=>a+b,0) + '/15';
+  document.getElementById('divStarsSummary').textContent = '⭐ ' + state.progress.div.reduce((a,b)=>a+b,0) + '/15';
+  document.getElementById('muteBtn').textContent = state.settings.sound ? '🔊' : '🔇';
+  document.getElementById('muteBtn').classList.toggle('muted', !state.settings.sound);
+  updateDailyBanner();
+}
+
+function updateDailyBanner(){
+  const entry = state.calendar[todayKey()];
+  const sub = document.getElementById('dailyBannerSub');
+  if(entry && entry.status==='success'){
+    sub.textContent = '✅ Réussi aujourd\'hui — bravo !';
+  } else {
+    const streak = computeStreak();
+    sub.textContent = streak>0 ? `🔥 ${streak} jour(s) de suite — continue !` : '10 multiplications + 10 divisions';
+  }
+}
+
+function computeStreak(){
+  let streak=0;
+  const d = new Date();
+  if(!(state.calendar[dateKey(d)] && state.calendar[dateKey(d)].status==='success')){
+    d.setDate(d.getDate()-1);
+  }
+  while(true){
+    const entry = state.calendar[dateKey(d)];
+    if(entry && entry.status==='success'){ streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+/* ---------- level select screen ---------- */
+function openLevelSelect(op){
+  state.mode = 'practice';
+  state.op = op;
+  document.getElementById('levelsTitle').textContent = op==='mult' ? '🧮 Multiplication' : '➗ Division';
+  const list = document.getElementById('levelsList');
+  list.innerHTML='';
+  const levels = levelsForOp(op);
+  const stars = starsArr(op);
+  levels.forEach((lvl,i)=>{
+    const card = document.createElement('div');
+    card.className = 'levelcard';
+    card.innerHTML = `
+      <div class="num">${i+1}</div>
+      <div class="info">
+        <div class="name">${lvl.name}</div>
+        <div class="desc">${lvl.desc}</div>
+      </div>
+      <div class="stars">${starString(stars[i])}</div>
+    `;
+    card.addEventListener('click', ()=> startLevel(op, i));
+    list.appendChild(card);
+  });
+  showScreen('screen-levels');
+}
+
+/* ---------- exercise series controller (practice mode only — the daily challenge has its own fixed flow, see startDailyChallenge) ---------- */
+function startLevel(op, idx){
+  state.op = op; state.levelIdx = idx;
+  state.series = { total:6, index:0, errorFree:0 };
+  document.getElementById('exerciseTitle').textContent = (op==='mult'?'🧮 ':'➗ ') + levelsForOp(op)[idx].name;
+  showScreen('screen-exercise');
+  nextExercise();
+}
+
+function nextExercise(){
+  state.series.index++;
+  if(state.series.index > state.series.total){ finishSeries(); return; }
+  const isDaily = state.mode==='daily-mult' || state.mode==='daily-div';
+  let counterText = `Exercice ${state.series.index}/${state.series.total}`;
+  if(isDaily){
+    const errsSoFar = (state.series.index-1) - state.series.errorFree;
+    counterText += ` · erreurs ${errsSoFar}/3`;
+  }
+  document.getElementById('exerciseCounter').textContent = counterText;
+  document.getElementById('exerciseProgressBar').style.width = ((state.series.index-1)/state.series.total*100)+'%';
+  document.getElementById('streakCount').textContent = state.streak;
+  document.getElementById('feedback').textContent='';
+  const levels = levelsForOp(state.op);
+  const levelIdx = isDaily ? state.dailyPlan[state.op][state.series.index-1] : state.levelIdx;
+  const cfg = levels[levelIdx];
+  const exMode = isDaily ? 'test' : 'guided';
+  if(state.op==='mult'){
+    state.current = new MultExercise(cfg.gen(), exMode);
+  } else {
+    state.current = new DivExercise(cfg.gen(), exMode);
+  }
+  state.current.render(document.getElementById('exercisePanel'));
+}
+
+function exerciseCompleted(hadError){
+  document.getElementById('exerciseProgressBar').style.width = (state.series.index/state.series.total*100)+'%';
+  if(hadError){
+    state.streak = 0;
+  } else {
+    state.series.errorFree++;
+    state.streak++;
+    state.progress.bestStreak = Math.max(state.progress.bestStreak, state.streak);
+  }
+  state.progress.points += hadError ? 1 : 3;
+  saveProgress();
+  document.getElementById('streakCount').textContent = state.streak;
+  refreshHeader();
+  setTimeout(nextExercise, 900);
+}
+
+function finishSeries(){
+  if(state.mode==='daily-mult'){
+    state.daily.multErrors = state.series.total - state.series.errorFree;
+    state.mode = 'daily-div'; state.op = 'div';
+    state.series = { total:10, index:0, errorFree:0 };
+    document.getElementById('exerciseTitle').textContent = '🗓️ Défi (2/2) — ➗ Division';
+    nextExercise();
+    return;
+  }
+  if(state.mode==='daily-div'){
+    state.daily.divErrors = state.series.total - state.series.errorFree;
+    finishDailyChallenge();
+    return;
+  }
+  finishPracticeSeries();
+}
+
+function finishPracticeSeries(){
+  const ef = state.series.errorFree, total = state.series.total;
+  let stars = 0;
+  if(ef>=5) stars=3; else if(ef>=3) stars=2; else if(ef>=1) stars=1;
+  const arr = starsArr(state.op);
+  const improved = stars > arr[state.levelIdx];
+  arr[state.levelIdx] = Math.max(arr[state.levelIdx], stars);
+  saveProgress();
+  refreshHeader();
+
+  document.getElementById('summaryStars').textContent = stars>0 ? '⭐'.repeat(stars) + '☆'.repeat(3-stars) : '💪';
+  document.getElementById('summaryTitle').textContent = stars===3 ? 'Parfait !' : stars>0 ? 'Bien joué !' : 'Continue comme ça !';
+  document.getElementById('summaryText').textContent = `${ef} exercice(s) réussi(s) sans erreur sur ${total}.` + (improved? ' Nouveau record pour ce niveau !':'');
+
+  const levels = levelsForOp(state.op);
+  const hasNext = state.levelIdx < levels.length-1;
+  document.getElementById('btnNextLevel').style.display = hasNext ? 'block':'none';
+  document.getElementById('btnReplay').textContent = 'Rejouer ce niveau';
+  document.getElementById('btnMenu').textContent = 'Retour au menu';
+
+  showScreen('screen-summary');
+  if(stars>0){ sndLevel(); confettiBurst(); }
+}
+
+function startDailyChallenge(){
+  state.daily = { multErrors:0, divErrors:0 };
+  state.dailyPlan = { mult: shuffled(DAILY_MULT_PLAN), div: shuffled(DAILY_DIV_PLAN) };
+  state.mode = 'daily-mult'; state.op = 'mult';
+  state.series = { total:10, index:0, errorFree:0 };
+  document.getElementById('exerciseTitle').textContent = '🗓️ Défi (1/2) — 🧮 Multiplication';
+  showScreen('screen-exercise');
+  nextExercise();
+}
+
+function finishDailyChallenge(){
+  const d = state.daily;
+  const success = d.multErrors<=3 && d.divErrors<=3;
+  state.calendar[todayKey()] = { status: success?'success':'fail', multErrors:d.multErrors, divErrors:d.divErrors };
+  saveCalendar();
+  refreshHeader();
+
+  document.getElementById('summaryStars').textContent = success ? '🎉🏆🎉' : '💪';
+  document.getElementById('summaryTitle').textContent = success ? 'Défi du jour réussi !' : 'Pas encore réussi...';
+  document.getElementById('summaryText').textContent = success
+    ? `Bravo ! ${10-d.multErrors}/10 multiplications et ${10-d.divErrors}/10 divisions sans erreur (3 max autorisées). La case du jour passe en vert !`
+    : `${d.multErrors} erreur(s) en multiplication et ${d.divErrors} erreur(s) en division (3 max autorisées pour chaque). Réessaie pour valider la journée !`;
+
+  document.getElementById('btnNextLevel').style.display = 'none';
+  document.getElementById('btnReplay').textContent = 'Refaire le défi';
+  document.getElementById('btnMenu').textContent = 'Retour au calendrier';
+
+  showScreen('screen-summary');
+  if(success){ sndLevel(); confettiBurst(); }
+}
+
+/* ---------- calendar screen ---------- */
+const MONTH_NAMES = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const DAY_NAMES = ["L","M","M","J","V","S","D"];
+
+function renderCalendar(){
+  const y = state.calYear, m = state.calMonth;
+  document.getElementById('calTitle').textContent = MONTH_NAMES[m] + ' ' + y;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML='';
+  DAY_NAMES.forEach(dn=>{
+    const h=document.createElement('div'); h.className='cal-dow'; h.textContent=dn; grid.appendChild(h);
+  });
+  let startOffset = new Date(y,m,1).getDay()-1;
+  if(startOffset<0) startOffset=6;
+  for(let i=0;i<startOffset;i++){ const e=document.createElement('div'); e.className='cal-day empty'; grid.appendChild(e); }
+
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const todayStr = todayKey();
+  const now = new Date();
+  for(let day=1; day<=daysInMonth; day++){
+    const dateObj = new Date(y,m,day);
+    const key = dateKey(dateObj);
+    const entry = state.calendar[key];
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    if(entry) cell.classList.add(entry.status);
+    if(key===todayStr) cell.classList.add('today');
+    if(dateObj.setHours(0,0,0,0) > now.setHours(0,0,0,0)) cell.classList.add('future');
+    cell.textContent = day;
+    if(key===todayStr){
+      cell.classList.add('clickable');
+      cell.addEventListener('click', ()=> startDailyChallenge());
+    } else if(entry){
+      cell.classList.add('clickable');
+      cell.addEventListener('click', ()=>{
+        alert(`${key}\n${entry.status==='success'?'✅ Défi réussi':'❌ Défi non réussi'}\nErreurs multiplication : ${entry.multErrors}/10\nErreurs division : ${entry.divErrors}/10`);
+      });
+    }
+    grid.appendChild(cell);
+  }
+
+  const todayEntry = state.calendar[todayStr];
+  const cta = document.getElementById('calCta');
+  if(todayEntry && todayEntry.status==='success'){
+    cta.textContent = '✅ Réussi aujourd\'hui — refaire quand même';
+    cta.className = 'btn ghost big';
+  } else if(todayEntry && todayEntry.status==='fail'){
+    cta.textContent = '🔁 Réessayer le défi du jour';
+    cta.className = 'btn primary big';
+  } else {
+    cta.textContent = '🚀 Commencer le défi du jour';
+    cta.className = 'btn primary big';
+  }
+  document.getElementById('calStreak').textContent = computeStreak() + ' jour(s) de suite';
+}
+
+function confettiBurst(){
+  const emojis=['🎉','⭐','🎊','✨','🦊'];
+  for(let i=0;i<24;i++){
+    const el=document.createElement('div');
+    el.className='confetti';
+    el.textContent = emojis[randInt(0,emojis.length-1)];
+    el.style.left = randInt(2,98)+'vw';
+    el.style.animationDuration = (1.6+Math.random()*1.2)+'s';
+    el.style.fontSize = (1+Math.random()*1.2)+'rem';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 3200);
+  }
+}
+
+/* ---------- digit-cell helper ---------- */
+function makeCell(kind){
+  const d=document.createElement('div');
+  d.className='cell '+kind;
+  return d;
+}
+function makeInputCell(extraClass){
+  const d=document.createElement('div');
+  d.className='cell'+(extraClass?(' '+extraClass):'');
+  const inp=document.createElement('input');
+  inp.type='tel'; inp.inputMode='numeric'; inp.maxLength=1; inp.autocomplete='off';
+  d.appendChild(inp);
+  return {wrap:d, input:inp};
+}
+function wireAutoAdvance(inputs){
+  inputs.forEach((inp,i)=>{
+    inp.addEventListener('input', ()=>{
+      inp.value = inp.value.replace(/[^0-9]/g,'').slice(-1);
+      if(inp.value && i<inputs.length-1) inputs[i+1].focus();
+    });
+    inp.addEventListener('keydown', (e)=>{
+      if(e.key==='Backspace' && !inp.value && i>0) inputs[i-1].focus();
+    });
+  });
+}
+
+/* ---------- carry (retenue) computation, exactly as done on paper ---------- */
+// multiplying M (digits, most-significant-first) by single digit d, column by column from the right.
+// the carry produced while computing column i is written above column i-1 (one place to the left).
+function multiplyWithCarries(Mdigits, d){
+  const n = Mdigits.length;
+  const digitsOut = new Array(n);
+  const carriesIn = new Array(n).fill(0); // carriesIn[i] = carry to add while computing column i (box sits above column i)
+  let c = 0;
+  for(let i=n-1;i>=0;i--){
+    const val = Mdigits[i]*d + c;
+    digitsOut[i] = val % 10;
+    c = Math.floor(val/10);
+    if(i>0) carriesIn[i-1] = c;
+  }
+  return { digitsOut, carriesIn, leadingCarry:c };
+}
+// adding several numbers (right-aligned within totalCols), column by column from the right.
+function sumColumnsWithCarries(nums, totalCols){
+  const padded = nums.map(v => pad(String(v), totalCols).split('').map(Number));
+  const digitsOut = new Array(totalCols).fill(0);
+  const carriesIn = new Array(totalCols).fill(0);
+  let c = 0;
+  for(let col=totalCols-1; col>=0; col--){
+    let s = c;
+    padded.forEach(arr => s += arr[col]);
+    digitsOut[col] = s % 10;
+    c = Math.floor(s/10);
+    if(col>0) carriesIn[col-1] = c;
+  }
+  return { digitsOut, carriesIn, finalCarry:c };
+}
+
+/* =========================================================
+   MULTIPLICATION EXERCISE
+   ========================================================= */
+function MultExercise(op, mode){
+  this.testMode = mode==='test';
+  this.a = op.a; this.b = op.b;
+  this.aD = digits(this.a); this.bD = digits(this.b);
+  this.partials = this.bD.slice().reverse().map((d,shift)=>{
+    const mc = multiplyWithCarries(this.aD, d);
+    return { value:this.a*d, shift, digitsArr:digits(this.a*d), carriesIn:mc.carriesIn };
+  });
+  this.product = this.a*this.b;
+  this.needsSum = this.bD.length>1;
+  this.totalCols = String(this.product).length;
+  this.stepIdx = 0; // 0..partials.length-1 are partial rows, last extra step is sum (if needed)
+  this.hadError = false;
+  if(this.needsSum){
+    // each row's real contribution to the sum is shifted left by its position (e.g. the tens-digit
+    // row is really ×10) — using the raw unshifted value here was the bug: it silently misaligned
+    // the columns and produced wrong "expected" carries whenever a real carry was needed.
+    this.sumCarries = sumColumnsWithCarries(this.partials.map(p=>p.value*Math.pow(10,p.shift)), this.totalCols).carriesIn;
+  }
+}
+MultExercise.prototype.totalSteps = function(){ return this.partials.length + (this.needsSum?1:0); };
+
+MultExercise.prototype.render = function(panel){
+  panel.innerHTML='';
+  const gridWrap = document.createElement('div'); gridWrap.className='gridwrap';
+  const grid = document.createElement('div'); grid.className='mgrid';
+  const cols = this.totalCols;
+  grid.style.gridTemplateColumns = `1.4rem repeat(${cols}, clamp(2rem,8vw,2.6rem))`;
+  this.grid = grid;
+  this.cols = cols;
+
+  const placeRow = (rowEls, colOffset)=>{
+    rowEls.forEach((el,i)=>{ el.style.gridColumn = (2 + colOffset + i); grid.appendChild(el); });
+  };
+
+  const showCarries = state.settings.carry && this.aD.length>1;
+  const mColOffset = cols - this.aD.length;
+
+  // multiplicande row
+  const rowA = [makeCell('sign')];
+  this.aD.forEach(d=>{ const c=makeCell('static'); c.textContent=d; rowA.push(c); });
+  placeRow(rowA.slice(1), mColOffset);
+  grid.appendChild(rowA[0]); rowA[0].style.gridColumn=1;
+
+  // multiplicateur row
+  const signB = makeCell('sign'); signB.textContent='×'; signB.style.gridColumn=1;
+  grid.appendChild(signB);
+  const rowB=[];
+  this.bD.forEach(d=>{ const c=makeCell('static'); c.textContent=d; rowB.push(c); });
+  placeRow(rowB, cols - this.bD.length);
+
+  const hr1=document.createElement('div'); hr1.className='hline'; grid.appendChild(hr1);
+
+  // partial rows. Each gets its OWN carry row, aligned to the multiplicande's columns — not a single
+  // row shared/reset across steps: once every row is fillable at the same time (daily-challenge "test"
+  // mode), reusing one carry row across rows 1, 2, 3... would mean row 2's carries overwrite row 1's
+  // before row 1 is even checked. Own boxes per row = no conflict, in either guided or test mode.
+  this.partialInputs = [];
+  this.partialCarryInputs = [];
+  this.partialCarryWrap = [];
+  this.partialZeroWraps = [];
+  this.partialAllWraps = [];
+  this.partials.forEach((p,idx)=>{
+    const carryWrap=[], carryInputs=[];
+    if(showCarries){
+      for(let i=0;i<this.aD.length-1;i++){ const c=makeInputCell('carry'); carryWrap.push(c.wrap); carryInputs.push(c.input); }
+      // shifted by the same amount as this row's own product (mColOffset - p.shift), not pinned to M:
+      // a carry belongs directly above the digit it just helped compute in THIS row, and once a row
+      // has an extra leading digit (from its own final carry-out) that position moves with the row.
+      placeRow(carryWrap, mColOffset - p.shift);
+      wireAutoAdvance(carryInputs);
+    }
+    this.partialCarryInputs.push(carryInputs);
+    this.partialCarryWrap.push(carryWrap);
+
+    const cellsWrap=[], cellsInput=[];
+    p.digitsArr.forEach(()=>{ const c=makeInputCell(); cellsWrap.push(c.wrap); cellsInput.push(c.input); });
+    // from the 2nd row on, the shifted-out columns get a fixed, non-fillable 0 — written out like on paper.
+    const zeroWraps=[];
+    for(let z=0; z<p.shift; z++){ const c=makeCell('static'); c.textContent='0'; zeroWraps.push(c); }
+    placeRow(cellsWrap.concat(zeroWraps), cols - p.shift - p.digitsArr.length);
+    wireAutoAdvance(cellsInput);
+    this.partialInputs.push({inputs:cellsInput, target:digits(p.value)});
+    this.partialZeroWraps.push(zeroWraps);
+
+    const allWraps = carryWrap.concat(cellsWrap, zeroWraps);
+    this.partialAllWraps.push(allWraps);
+    if(!this.testMode && idx>0){ allWraps.forEach(w=>w.style.visibility='hidden'); }
+  });
+
+  if(this.needsSum){
+    const hr2=document.createElement('div'); hr2.className='hline'; grid.appendChild(hr2);
+    this.sumCarryInputs=[];
+    if(state.settings.carry){
+      const carryRow=[];
+      for(let i=0;i<cols-1;i++){ const c=makeInputCell('carry'); carryRow.push(c.wrap); this.sumCarryInputs.push(c.input); }
+      placeRow(carryRow, 0);
+      this.sumCarryWrap = carryRow;
+      wireAutoAdvance(this.sumCarryInputs);
+    }
+    const sumWrap=[], sumInput=[];
+    const prodD = digits(this.product);
+    prodD.forEach(()=>{ const c=makeInputCell(); sumWrap.push(c.wrap); sumInput.push(c.input); });
+    placeRow(sumWrap, cols - prodD.length);
+    wireAutoAdvance(sumInput);
+    this.sumInputs = {inputs:sumInput, target:prodD, wrap:sumWrap};
+    if(!this.testMode){
+      sumWrap.forEach(w=>w.style.visibility='hidden');
+      if(this.sumCarryWrap) this.sumCarryWrap.forEach(w=>w.style.visibility='hidden');
+    }
+  }
+
+  gridWrap.appendChild(grid);
+  panel.appendChild(gridWrap);
+
+  const label=document.createElement('div');
+  label.style.textAlign='center'; label.style.fontWeight='700'; label.style.margin='6px 0 2px'; label.style.color='#6b6684'; label.style.fontSize='.85rem';
+  panel.appendChild(label);
+  this.label = label;
+
+  const actions=document.createElement('div'); actions.className='actions';
+  const checkBtn=document.createElement('button'); checkBtn.className='btn primary';
+  checkBtn.textContent = this.testMode ? 'Valider tout' : 'Vérifier';
+  actions.appendChild(checkBtn);
+  panel.appendChild(actions);
+  this.checkBtn = checkBtn;
+
+  if(this.testMode){
+    label.textContent = `${this.a} × ${this.b} — remplis tout, puis valide`;
+    checkBtn.addEventListener('click', ()=>this.checkAll());
+    setTimeout(()=>{
+      const first = this.partialCarryInputs[0].length ? this.partialCarryInputs[0][0] : this.partialInputs[0].inputs[0];
+      first.focus();
+    }, 50);
+  } else {
+    this.stepIdx=0;
+    this.activateStep();
+    checkBtn.addEventListener('click', ()=>this.checkStep());
+  }
+};
+
+MultExercise.prototype.activateStep = function(){
+  const isPartial = this.stepIdx < this.partials.length;
+  if(isPartial){
+    const p=this.partials[this.stepIdx];
+    this.label.textContent = this.partials.length>1
+      ? `Étape ${this.stepIdx+1} : ${this.a} × ${this.bD[this.bD.length-1-this.stepIdx]}${p.shift?' (décalé)':''}`
+      : `Calcule ${this.a} × ${this.b}`;
+    this.partialAllWraps[this.stepIdx].forEach(w=>w.style.visibility='visible');
+    setTimeout(()=>{
+      const inputs = this.partialCarryInputs[this.stepIdx].length ? this.partialCarryInputs[this.stepIdx] : this.partialInputs[this.stepIdx].inputs;
+      inputs[0].focus();
+    }, 50);
+  } else {
+    this.label.textContent = `Additionne les résultats intermédiaires`;
+    this.sumInputs.wrap.forEach(w=>w.style.visibility='visible');
+    if(this.sumCarryWrap) this.sumCarryWrap.forEach(w=>w.style.visibility='visible');
+    setTimeout(()=>this.sumInputs.inputs[0].focus(), 50);
+  }
+};
+
+MultExercise.prototype.currentGroups = function(){
+  const isPartial = this.stepIdx < this.partials.length;
+  const groups = [];
+  if(isPartial){
+    const p = this.partials[this.stepIdx];
+    groups.push(this.partialInputs[this.stepIdx]);
+    if(this.partialCarryInputs[this.stepIdx].length){
+      groups.push({ inputs:this.partialCarryInputs[this.stepIdx], target:p.carriesIn.slice(0,this.aD.length-1) });
+    }
+  } else {
+    groups.push(this.sumInputs);
+    if(this.sumCarryInputs && this.sumCarryInputs.length){
+      groups.push({ inputs:this.sumCarryInputs, target:this.sumCarries.slice(0,this.cols-1) });
+    }
+  }
+  return groups;
+};
+
+MultExercise.prototype.allGroups = function(){
+  const groups = [];
+  this.partials.forEach((p,idx)=>{
+    groups.push(this.partialInputs[idx]);
+    if(this.partialCarryInputs[idx].length){
+      groups.push({ inputs:this.partialCarryInputs[idx], target:p.carriesIn.slice(0,this.aD.length-1) });
+    }
+  });
+  if(this.needsSum){
+    groups.push(this.sumInputs);
+    if(this.sumCarryInputs && this.sumCarryInputs.length){
+      groups.push({ inputs:this.sumCarryInputs, target:this.sumCarries.slice(0,this.cols-1) });
+    }
+  }
+  return groups;
+};
+
+MultExercise.prototype.checkStep = function(){
+  const groups = this.currentGroups();
+  let allOk=true, allFilled=true;
+  groups.forEach(data=>{
+    data.inputs.forEach((inp,i)=>{
+      if(inp.value===''){ allFilled=false; return; }
+      const ok = Number(inp.value)===data.target[i];
+      inp.classList.remove('correct','wrong');
+      inp.classList.add(ok?'correct':'wrong');
+      if(!ok) allOk=false;
+    });
+  });
+  if(!allFilled){
+    setFeedback('Remplis toutes les cases d\'abord (les retenues aussi).', false);
+    return;
+  }
+  if(allOk){
+    sndOk();
+    setFeedback(pick(ENCOURAGE_OK), true);
+    this.checkBtn.disabled=true;
+    setTimeout(()=>{
+      this.stepIdx++;
+      if(this.stepIdx < this.totalSteps()){
+        this.checkBtn.disabled=false;
+        this.activateStep();
+        setFeedback('', true);
+      } else {
+        exerciseCompleted(this.hadError); // panel gets replaced shortly; keep the button disabled meanwhile
+      }
+    }, 700);
+  } else {
+    this.hadError = true;
+    sndBad();
+    setFeedback(pick(ENCOURAGE_BAD), false);
+    setTimeout(()=>{
+      groups.forEach(data=>{
+        data.inputs.forEach(inp=>{ if(inp.classList.contains('wrong')){ inp.value=''; inp.classList.remove('wrong'); } });
+      });
+      groups[0].inputs[0].focus();
+    }, 500);
+  }
+};
+
+// test mode: no per-row hints — fill in the whole grid, then a single check reveals every mistake in red.
+MultExercise.prototype.checkAll = function(){
+  const groups = this.allGroups();
+  let allFilled=true, hadWrong=false;
+  groups.forEach(data=>{
+    data.inputs.forEach((inp,i)=>{
+      if(inp.value===''){ allFilled=false; return; }
+      const ok = Number(inp.value)===data.target[i];
+      inp.classList.remove('correct','wrong');
+      inp.classList.add(ok?'correct':'wrong');
+      if(!ok) hadWrong=true;
+    });
+  });
+  if(!allFilled){ setFeedback('Remplis toutes les cases avant de valider.', false); return; }
+  this.hadError = hadWrong;
+  this.checkBtn.disabled = true;
+  groups.forEach(data=> data.inputs.forEach(inp=> inp.disabled=true));
+  if(hadWrong){ sndBad(); setFeedback('Certaines cases étaient fausses (en rouge).', false); }
+  else { sndOk(); setFeedback(pick(ENCOURAGE_OK), true); }
+  setTimeout(()=> exerciseCompleted(this.hadError), 1300);
+};
+
+/* =========================================================
+   DIVISION EXERCISE
+   ========================================================= */
+function computeDivisionSteps(dividend, divisor){
+  const dStr=String(dividend);
+  const steps=[];
+  let current=0, started=false, buffer='';
+  for(let i=0;i<dStr.length;i++){
+    const d=Number(dStr[i]);
+    current = current*10 + d;
+    buffer += dStr[i];
+    if(!started){
+      if(current < divisor){ continue; }
+      started=true;
+    }
+    const q=Math.floor(current/divisor);
+    const product=q*divisor;
+    const remainder=current-product;
+    steps.push({ brought:buffer, current, q, product, remainder });
+    buffer='';
+    current=remainder;
+  }
+  return steps;
+}
+
+function DivExercise(op, mode){
+  this.testMode = mode==='test';
+  this.dividend=op.dividend; this.divisor=op.divisor;
+  this.dStr=String(this.dividend);
+  this.steps=computeDivisionSteps(this.dividend,this.divisor);
+  let consumed=0;
+  this.steps.forEach(s=>{ consumed += s.brought.length; s.endCol = consumed-1; });
+  this.stepIdx=0;
+  this.hadError=false;
+}
+
+// written like on paper: dividend + divisor + growing quotient line, then one subtraction
+// block per step (product, then remainder) — no explanatory "how many times does X go into Y" prompts.
+DivExercise.prototype.render = function(panel){
+  panel.innerHTML='';
+  const cols = this.dStr.length;
+
+  const head=document.createElement('div'); head.className='divhead';
+  const gridWrap=document.createElement('div'); gridWrap.className='gridwrap';
+  const grid=document.createElement('div'); grid.className='mgrid';
+  grid.style.gridTemplateColumns = `repeat(${cols}, clamp(2rem,8vw,2.6rem))`;
+
+  // quotient row: one cell per dividend column, only columns matching a step's last digit get an input
+  this.qCells = [];
+  for(let col=0; col<cols; col++){
+    const c = makeCell('qcell');
+    c.style.gridColumn = col+1;
+    grid.appendChild(c);
+    const stepIdxForCol = this.steps.findIndex(s=>s.endCol===col);
+    if(stepIdxForCol>=0) this.qCells[stepIdxForCol] = c;
+  }
+  // dividend row (digits dim until "brought down"; in test mode everything is in play from the start)
+  this.digitSpans = this.dStr.split('').map((ch,col)=>{
+    const c = makeCell(this.testMode ? 'static used' : 'static dim'); c.textContent=ch; c.style.gridColumn=col+1;
+    grid.appendChild(c);
+    return c;
+  });
+
+  gridWrap.appendChild(grid);
+  head.appendChild(gridWrap);
+
+  const potence=document.createElement('div'); potence.className='potence';
+  potence.innerHTML = `<div class="divisor">${this.divisor}</div>`;
+  head.appendChild(potence);
+
+  panel.appendChild(head);
+
+  const log=document.createElement('div'); log.className='divlog';
+  panel.appendChild(log);
+  this.log = log;
+
+  const actions=document.createElement('div'); actions.className='actions';
+  const checkBtn=document.createElement('button'); checkBtn.className='btn primary';
+  checkBtn.textContent = this.testMode ? 'Valider tout' : 'Vérifier';
+  actions.appendChild(checkBtn);
+  panel.appendChild(actions);
+  this.checkBtn = checkBtn;
+
+  if(this.testMode){
+    this.qInputsArr=[]; this.prodInputsArr=[]; this.remInputsArr=[]; this.prodTargetsArr=[]; this.remTargetsArr=[];
+    this.steps.forEach((step,i)=>{
+      const built = this.buildStepBlock(i);
+      this.qInputsArr.push(built.qInput);
+      this.prodInputsArr.push(built.prodInputs); this.prodTargetsArr.push(built.prodTarget);
+      this.remInputsArr.push(built.remInputs); this.remTargetsArr.push(built.remTarget);
+    });
+    checkBtn.addEventListener('click', ()=> this.checkAll());
+    setTimeout(()=> this.qInputsArr[0].focus(), 50);
+  } else {
+    checkBtn.addEventListener('click', ()=> this.checkStep());
+    this.activateStep();
+  }
+};
+
+// builds one step's quotient box + subtraction block (product row, line, remainder row).
+// pure construction — visibility/enabled state is the caller's job.
+DivExercise.prototype.buildStepBlock = function(stepIdx){
+  const step = this.steps[stepIdx];
+  const qCell = this.qCells[stepIdx];
+  qCell.innerHTML='';
+  const qInput = document.createElement('input');
+  qInput.type='tel'; qInput.inputMode='numeric'; qInput.maxLength=1; qInput.autocomplete='off';
+  qCell.appendChild(qInput);
+
+  const block=document.createElement('div'); block.className='step-block active-step';
+  const l0=document.createElement('div'); l0.className='l0'; l0.textContent=`On pose ${step.current}`;
+  block.appendChild(l0);
+
+  const prodRow=document.createElement('div'); prodRow.className='digitrow';
+  const prodTarget = digits(step.product);
+  const prodInputs=[];
+  prodTarget.forEach(()=>{ const c=makeInputCell(); prodRow.appendChild(c.wrap); prodInputs.push(c.input); });
+  wireAutoAdvance(prodInputs);
+  block.appendChild(prodRow);
+
+  const hr=document.createElement('div'); hr.className='divhr';
+  block.appendChild(hr);
+
+  const remRow=document.createElement('div'); remRow.className='digitrow';
+  const remTarget = digits(step.remainder);
+  const remInputs=[];
+  remTarget.forEach(()=>{ const c=makeInputCell(); remRow.appendChild(c.wrap); remInputs.push(c.input); });
+  wireAutoAdvance(remInputs);
+  block.appendChild(remRow);
+
+  this.log.appendChild(block);
+  return { block, qInput, prodInputs, prodTarget, remInputs, remTarget };
+};
+
+DivExercise.prototype.activateStep = function(){
+  const step = this.steps[this.stepIdx];
+  this.digitSpans.forEach((s,i)=>{
+    s.classList.toggle('used', i<=step.endCol);
+    s.classList.toggle('dim', i>step.endCol);
+  });
+  const built = this.buildStepBlock(this.stepIdx);
+  this.qInput = built.qInput; this.currentBlock = built.block;
+  this.prodInputs = built.prodInputs; this.prodTarget = built.prodTarget;
+  this.remInputs = built.remInputs; this.remTarget = built.remTarget;
+  setTimeout(()=> this.qInput.focus(), 50);
+};
+
+DivExercise.prototype.checkStep = function(){
+  const step = this.steps[this.stepIdx];
+  const all = [{input:this.qInput, target:step.q}]
+    .concat(this.prodInputs.map((inp,i)=>({input:inp, target:this.prodTarget[i]})))
+    .concat(this.remInputs.map((inp,i)=>({input:inp, target:this.remTarget[i]})));
+
+  let allFilled=true, allOk=true;
+  all.forEach(o=>{
+    if(o.input.value===''){ allFilled=false; return; }
+    const ok = Number(o.input.value)===o.target;
+    o.input.classList.remove('correct','wrong');
+    o.input.classList.add(ok?'correct':'wrong');
+    if(!ok) allOk=false;
+  });
+  if(!allFilled){ setFeedback('Remplis toutes les cases d\'abord.', false); return; }
+
+  if(allOk){
+    sndOk();
+    setFeedback(pick(ENCOURAGE_OK), true);
+    this.checkBtn.disabled=true;
+    all.forEach(o=>{ o.input.disabled=true; });
+    this.currentBlock.classList.add('locked');
+    setTimeout(()=>{
+      this.stepIdx++;
+      if(this.stepIdx < this.steps.length){
+        this.checkBtn.disabled=false;
+        this.activateStep();
+        setFeedback('', true);
+      } else {
+        this.appendFinalMessage();
+        setTimeout(()=>exerciseCompleted(this.hadError), 1000);
+      }
+    }, 700);
+  } else {
+    this.hadError=true;
+    sndBad();
+    setFeedback(pick(ENCOURAGE_BAD), false);
+    setTimeout(()=>{
+      all.forEach(o=>{ if(o.input.classList.contains('wrong')){ o.input.value=''; o.input.classList.remove('wrong'); } });
+      this.qInput.focus();
+    }, 500);
+  }
+};
+
+DivExercise.prototype.appendFinalMessage = function(){
+  const quotient = this.steps.map(s=>s.q).join('');
+  const last = this.steps[this.steps.length-1];
+  const finalMsg=document.createElement('div'); finalMsg.className='divfinal';
+  finalMsg.textContent = `Quotient = ${quotient}` + (last.remainder ? `, reste ${last.remainder}` : ' (division exacte !)');
+  this.log.appendChild(finalMsg);
+};
+
+// test mode: no per-step hints — fill in every step, then a single check reveals every mistake in red.
+DivExercise.prototype.checkAll = function(){
+  const all = [];
+  this.steps.forEach((step,i)=>{
+    all.push({input:this.qInputsArr[i], target:step.q});
+    this.prodInputsArr[i].forEach((inp,j)=> all.push({input:inp, target:this.prodTargetsArr[i][j]}));
+    this.remInputsArr[i].forEach((inp,j)=> all.push({input:inp, target:this.remTargetsArr[i][j]}));
+  });
+  let allFilled=true, hadWrong=false;
+  all.forEach(o=>{
+    if(o.input.value===''){ allFilled=false; return; }
+    const ok = Number(o.input.value)===o.target;
+    o.input.classList.remove('correct','wrong');
+    o.input.classList.add(ok?'correct':'wrong');
+    if(!ok) hadWrong=true;
+  });
+  if(!allFilled){ setFeedback('Remplis toutes les cases avant de valider.', false); return; }
+  this.hadError = hadWrong;
+  this.checkBtn.disabled = true;
+  all.forEach(o=> o.input.disabled=true);
+  this.appendFinalMessage();
+  if(hadWrong){ sndBad(); setFeedback('Certaines cases étaient fausses (en rouge).', false); }
+  else { sndOk(); setFeedback(pick(ENCOURAGE_OK), true); }
+  setTimeout(()=> exerciseCompleted(this.hadError), 1300);
+};
+
+/* ---------- shared feedback ---------- */
+function setFeedback(text, ok){
+  const el=document.getElementById('feedback');
+  el.textContent=text;
+  el.className='feedback ' + (ok?'ok':'bad');
+}
+function pick(arr){ return arr[randInt(0,arr.length-1)]; }
+
+/* ---------- wiring ---------- */
+document.querySelectorAll('.opcard').forEach(c=>{
+  c.addEventListener('click', ()=> openLevelSelect(c.dataset.op));
+});
+document.getElementById('dailyBanner').addEventListener('click', ()=>{ renderCalendar(); showScreen('screen-calendar'); });
+document.getElementById('calBack').addEventListener('click', ()=> showScreen('screen-menu'));
+document.getElementById('calPrev').addEventListener('click', ()=>{
+  state.calMonth--; if(state.calMonth<0){ state.calMonth=11; state.calYear--; }
+  renderCalendar();
+});
+document.getElementById('calNext').addEventListener('click', ()=>{
+  state.calMonth++; if(state.calMonth>11){ state.calMonth=0; state.calYear++; }
+  renderCalendar();
+});
+document.getElementById('calCta').addEventListener('click', ()=> startDailyChallenge());
+
+document.getElementById('levelsBack').addEventListener('click', ()=> showScreen('screen-menu'));
+document.getElementById('exerciseBack').addEventListener('click', ()=>{
+  if(state.mode==='daily-mult' || state.mode==='daily-div'){
+    if(confirm('Abandonner le défi du jour en cours ?')){ renderCalendar(); showScreen('screen-calendar'); }
+  } else {
+    openLevelSelect(state.op);
+  }
+});
+document.getElementById('btnMenu').addEventListener('click', ()=>{
+  if(state.mode==='daily-mult' || state.mode==='daily-div'){ renderCalendar(); showScreen('screen-calendar'); }
+  else showScreen('screen-menu');
+});
+document.getElementById('btnReplay').addEventListener('click', ()=>{
+  if(state.mode==='daily-mult' || state.mode==='daily-div'){ startDailyChallenge(); }
+  else startLevel(state.op, state.levelIdx);
+});
+document.getElementById('btnNextLevel').addEventListener('click', ()=> startLevel(state.op, state.levelIdx+1));
+document.getElementById('muteBtn').addEventListener('click', ()=>{
+  state.settings.sound = !state.settings.sound; saveSettings(); refreshHeader();
+});
+document.getElementById('settingsBack').addEventListener('click', ()=> showScreen('screen-menu'));
+document.getElementById('toggleCarry').addEventListener('click', function(){
+  state.settings.carry=!state.settings.carry; saveSettings(); this.classList.toggle('on', state.settings.carry);
+});
+document.getElementById('toggleSound').addEventListener('click', function(){
+  state.settings.sound=!state.settings.sound; saveSettings(); this.classList.toggle('on', state.settings.sound); refreshHeader();
+});
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  if(confirm('Réinitialiser toute la progression ?')){
+    state.progress = Object.assign({}, DEFAULT_PROGRESS, {mult:[0,0,0,0,0], div:[0,0,0,0,0]});
+    saveProgress(); refreshHeader(); showScreen('screen-menu');
+  }
+});
+
+// long-press-ish: tap brand icon opens settings (simple hidden entry point)
+document.querySelector('.brand').addEventListener('click', ()=> showScreen('screen-settings'));
+
+/* ---------- init ---------- */
+document.getElementById('toggleCarry').classList.toggle('on', state.settings.carry);
+document.getElementById('toggleSound').classList.toggle('on', state.settings.sound);
+document.getElementById('menuSpeech').textContent = pick([
+  "Prêt à devenir un champion des calculs posés ?",
+  "Chaque niveau réussi te rapporte des étoiles !",
+  "Multiplication ou division, à toi de choisir !",
+]);
+refreshHeader();
+
+})();
+</script>
+</body>
+</html>
