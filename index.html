@@ -127,25 +127,31 @@ body{
 .feedback.ok{color:var(--green);}
 .feedback.bad{color:var(--coral);}
 
-/* division — French "potence" layout: quotient built up UNDER the divisor, not above the dividend */
-.divhead{display:flex; align-items:flex-start; justify-content:center; gap:14px; margin-bottom:4px; font-family:"Cascadia Code","Courier New",monospace;}
-.dividend{font-size:clamp(1.5rem,7vw,2rem); font-weight:800; letter-spacing:2px; padding-top:.2rem;}
+/* division — true "potence" (gallows) layout, as taught in class:
+     dividend │ divisor
+    -product  ¯¯¯¯¯¯¯¯¯
+     ......   quotient
+   Everything — dividend AND every subtraction step — lives in the left column, to the left of
+   the vertical bar. The right column stays short: divisor, a line, then the quotient underneath. */
+.potence-wrap{display:flex; align-items:flex-start; justify-content:center; gap:0; font-family:"Cascadia Code","Courier New",monospace;}
+.pot-left{border-right:3px solid var(--ink); padding-right:12px; flex:0 1 auto; min-width:0;}
+.pot-right{padding-left:12px; flex-shrink:0; text-align:center;}
+.dividend{font-size:clamp(1.5rem,7vw,2rem); font-weight:800; letter-spacing:2px; text-align:right;}
 .dividend span{display:inline-block; transition:color .3s;}
 .dividend span.dim{color:var(--grey);}
 .dividend span.used{color:var(--ink);}
 .cell.used{color:var(--ink);}
-.potence{border-left:3px solid var(--ink); border-bottom:3px solid var(--ink); padding:2px 10px 10px 10px; min-width:64px; text-align:center; margin-bottom:2px;}
-.potence .divisor{font-size:clamp(1.3rem,6vw,1.7rem); font-weight:800;}
+.pot-right .divisor{font-size:clamp(1.3rem,6vw,1.7rem); font-weight:800; border-bottom:3px solid var(--ink); padding-bottom:6px; min-width:2.2em;}
 .quotientline{display:flex; gap:4px; justify-content:center; margin-top:8px; min-height:clamp(1.8rem,7vw,2.2rem);}
 .quotientline .cell{width:clamp(1.8rem,7vw,2.2rem); height:clamp(1.8rem,7vw,2.2rem); font-size:clamp(1rem,4.5vw,1.3rem);}
 
-.divlog{margin-top:12px;}
-.step-block{padding:8px 6px; margin-bottom:6px; border-radius:12px;}
-.step-block.active-step{background:#F7F6FC;}
+.divlog{margin-top:6px;}
+.step-block{padding:4px 0 8px; text-align:right;}
 .step-block.locked{opacity:.8;}
-.step-block .l0{font-size:.78rem; font-weight:700; color:#8884a0; text-align:right; margin-bottom:4px;}
+.step-block .l0{font-size:.72rem; font-weight:700; color:#8884a0; text-align:right; margin-bottom:2px;}
 .step-block .divnote{color:var(--coral); font-style:italic; font-weight:600;}
-.digitrow{display:flex; justify-content:flex-end; gap:3px; margin:2px 0;}
+.digitrow{display:flex; justify-content:flex-end; align-items:center; gap:3px; margin:2px 0;}
+.digitrow .minussign{font-weight:800; color:var(--ink); font-size:1.1rem; margin-right:2px;}
 .divhr{border-bottom:3px solid var(--ink); margin:3px 0; width:100%;}
 .divfinal{text-align:center; font-weight:800; color:var(--purple-dark); padding:10px; font-size:1.05rem;}
 
@@ -1102,33 +1108,39 @@ function DivExercise(op, mode){
   this.hadError=false;
 }
 
-// French "potence" layout, as actually taught: dividend │ divisor, with the quotient built up
-// UNDER the divisor (not above the dividend) — one subtraction block per step below.
+// French "potence" (gallows) layout, as actually taught:
+//   dividend │ divisor
+//  -product  ¯¯¯¯¯¯¯¯¯
+//   ......   quotient
+// The dividend AND every subtraction step live in the left column, under and to the left of the
+// vertical bar. The right column only ever holds the divisor, a line under it, then the quotient
+// built up digit by digit underneath — it never grows tall the way the left column does.
 DivExercise.prototype.render = function(panel){
   panel.innerHTML='';
 
-  const head=document.createElement('div'); head.className='divhead';
+  const wrap=document.createElement('div'); wrap.className='potence-wrap';
 
+  const left=document.createElement('div'); left.className='pot-left';
   const dividendEl=document.createElement('div'); dividendEl.className='dividend';
   this.digitSpans = this.dStr.split('').map(ch=>{
     const s=document.createElement('span'); s.textContent=ch; s.className = this.testMode ? 'used' : 'dim'; return s;
   });
   this.digitSpans.forEach(s=>dividendEl.appendChild(s));
-  head.appendChild(dividendEl);
+  left.appendChild(dividendEl);
+  const log=document.createElement('div'); log.className='divlog';
+  left.appendChild(log);
+  this.log = log;
+  wrap.appendChild(left);
 
-  const potence=document.createElement('div'); potence.className='potence';
+  const right=document.createElement('div'); right.className='pot-right';
   const divisorEl=document.createElement('div'); divisorEl.className='divisor'; divisorEl.textContent=this.divisor;
-  potence.appendChild(divisorEl);
+  right.appendChild(divisorEl);
   const qline=document.createElement('div'); qline.className='quotientline';
-  potence.appendChild(qline);
-  head.appendChild(potence);
-
-  panel.appendChild(head);
+  right.appendChild(qline);
+  wrap.appendChild(right);
   this.qline = qline;
 
-  const log=document.createElement('div'); log.className='divlog';
-  panel.appendChild(log);
-  this.log = log;
+  panel.appendChild(wrap);
 
   const actions=document.createElement('div'); actions.className='actions';
   const checkBtn=document.createElement('button'); checkBtn.className='btn primary';
@@ -1181,7 +1193,9 @@ DivExercise.prototype.buildStepBlock = function(stepIdx){
   const l0=document.createElement('div'); l0.className='l0'; l0.textContent=`On pose ${step.current}`;
   block.appendChild(l0);
 
-  const prodRow=document.createElement('div'); prodRow.className='digitrow';
+  const prodRow=document.createElement('div'); prodRow.className='digitrow minusrow';
+  const minusSign=document.createElement('span'); minusSign.className='minussign'; minusSign.textContent='−';
+  prodRow.appendChild(minusSign);
   const prodTarget = digits(step.product);
   const prodInputs=[];
   prodTarget.forEach(()=>{ const c=makeInputCell(); prodRow.appendChild(c.wrap); prodInputs.push(c.input); });
