@@ -138,6 +138,7 @@ body{
 .step-block.active-step{background:#F7F6FC;}
 .step-block.locked{opacity:.8;}
 .step-block .l0{font-size:.78rem; font-weight:700; color:#8884a0; text-align:right; margin-bottom:4px;}
+.step-block .divnote{color:var(--coral); font-style:italic; font-weight:600;}
 .digitrow{display:flex; justify-content:flex-end; gap:3px; margin:2px 0;}
 .divhr{border-bottom:3px solid var(--ink); margin:3px 0; width:100%;}
 .divfinal{text-align:center; font-weight:800; color:var(--purple-dark); padding:10px; font-size:1.05rem;}
@@ -1066,18 +1067,19 @@ function computeDivisionSteps(dividend, divisor){
   const dStr=String(dividend);
   const steps=[];
   let current=0, started=false, buffer='';
+  const failedAttempts=[]; // e.g. for 451÷9: [4] — tried "4" alone first, it's < 9, so bring down the next digit too
   for(let i=0;i<dStr.length;i++){
     const d=Number(dStr[i]);
     current = current*10 + d;
     buffer += dStr[i];
     if(!started){
-      if(current < divisor){ continue; }
+      if(current < divisor){ failedAttempts.push(current); continue; }
       started=true;
     }
     const q=Math.floor(current/divisor);
     const product=q*divisor;
     const remainder=current-product;
-    steps.push({ brought:buffer, current, q, product, remainder });
+    steps.push({ brought:buffer, current, q, product, remainder, failedAttempts: steps.length===0 ? failedAttempts.slice() : [] });
     buffer='';
     current=remainder;
   }
@@ -1169,6 +1171,15 @@ DivExercise.prototype.buildStepBlock = function(stepIdx){
   qCell.appendChild(qInput);
 
   const block=document.createElement('div'); block.className='step-block active-step';
+
+  // make the "it doesn't fit yet, bring down the next digit" reasoning visible instead of silently
+  // jumping straight to the grouped value (e.g. for 451÷9: show "4 < 9" before "On pose 45").
+  if(step.failedAttempts && step.failedAttempts.length){
+    const note=document.createElement('div'); note.className='l0 divnote';
+    note.textContent = step.failedAttempts.map(v=>`${v} < ${this.divisor}`).join('  →  ') + `  →  pas assez, on continue avec ${step.current}`;
+    block.appendChild(note);
+  }
+
   const l0=document.createElement('div'); l0.className='l0'; l0.textContent=`On pose ${step.current}`;
   block.appendChild(l0);
 
