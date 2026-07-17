@@ -52,6 +52,12 @@ body{
 .opcard.mult{border-color:#D1C4E9;}
 .opcard.div{border-color:#B2EBF2;}
 .opcard .stars{margin-top:8px; font-size:.95rem; color:var(--yellow);}
+.opcard.wide{grid-column:1/-1; display:flex; align-items:center; gap:14px; text-align:left; padding:16px; border-color:#FFE0B2;}
+.opcard.wide .emoji{font-size:2rem;}
+.opcard.wide .info{flex:1;}
+.opcard.wide h3{margin:0 0 2px;}
+.opcard.wide .sub{margin:0;}
+.opcard.wide .stars{margin:0; white-space:nowrap;}
 
 .backrow{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
 .backrow h2{margin:0; font-size:1.25rem; flex:1; text-align:center; margin-right:38px;}
@@ -184,13 +190,21 @@ body{
         <div class="sub">posée, pas à pas</div>
         <div class="stars" id="divStarsSummary">☆☆☆☆☆</div>
       </div>
+      <div class="opcard wide" data-op="sub">
+        <div class="emoji">➖</div>
+        <div class="info">
+          <h3>Soustraction</h3>
+          <div class="sub">posée, avec retenues</div>
+        </div>
+        <div class="stars" id="subStarsSummary">☆☆☆☆☆</div>
+      </div>
     </div>
     <div class="daily-banner" id="dailyBanner">
       <div class="db-left">
         <div class="db-emoji">📅</div>
         <div>
           <div class="db-title">Défi du jour</div>
-          <div class="db-sub" id="dailyBannerSub">10 multiplications + 10 divisions</div>
+          <div class="db-sub" id="dailyBannerSub">4 multiplications + 4 divisions + 4 soustractions</div>
         </div>
       </div>
       <div class="db-arrow">→</div>
@@ -216,7 +230,7 @@ body{
     <div class="panel" style="text-align:center;">
       <div style="font-weight:700; color:var(--coral); margin-bottom:12px;">🔥 <span id="calStreak">0 jour(s) de suite</span></div>
       <button class="btn primary big" id="calCta">🚀 Commencer le défi du jour</button>
-      <p style="font-size:.78rem; color:#8884a0; margin-top:12px; line-height:1.5;">10 multiplications + 10 divisions posées.<br>3 erreurs maximum autorisées pour chaque, pour valider la journée !</p>
+      <p style="font-size:.78rem; color:#8884a0; margin-top:12px; line-height:1.5;">4 multiplications + 4 divisions + 4 soustractions posées (Expert et Maître).<br>Il faut 3 bonnes sur 4 dans chaque opération pour valider la journée !</p>
     </div>
     <div class="panel">
       <div class="cal-nav">
@@ -316,17 +330,17 @@ function sndBad(){ beep(180,.22,'sawtooth'); }
 function sndLevel(){ [660,880,1100,1320].forEach((f,i)=>setTimeout(()=>beep(f,.2,'triangle'),i*110)); }
 
 /* ---------- state ---------- */
-const DEFAULT_PROGRESS = { mult:[0,0,0,0,0], div:[0,0,0,0,0], points:0, bestStreak:0 };
+const DEFAULT_PROGRESS = { mult:[0,0,0,0,0], div:[0,0,0,0,0], sub:[0,0,0,0,0], points:0, bestStreak:0 };
 const state = {
   progress: loadProgress(),
   settings: loadSettings(),
   calendar: loadCalendar(),
-  op:null, levelIdx:0, mode:'practice', // mode: 'practice' | 'daily-mult' | 'daily-div'
+  op:null, levelIdx:0, mode:'practice', // mode: 'practice' | 'daily-mult' | 'daily-div' | 'daily-sub'
   series:{ total:6, index:0, errorFree:0 },
   streak:0,
   current:null, // current exercise controller
-  daily:null, // {multErrors, divErrors} while a daily challenge is in progress
-  dailyPlan:null, // {mult:[10 level indices], div:[10 level indices]} for the current daily challenge
+  daily:null, // {multErrors, divErrors, subErrors} while a daily challenge is in progress
+  dailyPlan:null, // {mult:[4 level indices], div:[4 level indices], sub:[4 level indices]} for the current daily challenge
   calMonth: new Date().getMonth(), calYear: new Date().getFullYear(),
 };
 
@@ -375,13 +389,29 @@ const DIV_LEVELS = [
   { name:"Champion", desc:"÷ 2 chiffres, avec reste", gen:()=>({dividend:randInt(1000,9999), divisor:randInt(11,99)}) },
 ];
 
+const SUB_LEVELS = [
+  { name:"Débutant", desc:"2 chiffres − 2 chiffres", gen:()=>{ const a=randInt(10,99); const b=randInt(1,a); return {a,b}; } },
+  { name:"Confirmé", desc:"3 chiffres − 2 chiffres", gen:()=>{ const a=randInt(100,999); const b=randInt(10,Math.min(99,a)); return {a,b}; } },
+  { name:"Expert", desc:"3 chiffres − 3 chiffres", gen:()=>{ const a=randInt(101,999); const b=randInt(100,a); return {a,b}; } },
+  { name:"Maître", desc:"4 chiffres − 3/4 chiffres", gen:()=>{ const a=randInt(1001,9999); const b=randInt(100,a-1); return {a,b}; } },
+  { name:"Champion", desc:"5 chiffres − 4/5 chiffres", gen:()=>{ const a=randInt(10001,99999); const b=randInt(1000,a-1); return {a,b}; } },
+];
+
+const OP_META = {
+  mult: { emoji:'🧮', label:'Multiplication' },
+  div:  { emoji:'➗', label:'Division' },
+  sub:  { emoji:'➖', label:'Soustraction' },
+};
+
 const ENCOURAGE_OK = ["Génial !","Bravo !","Super calcul !","Tu assures !","Impeccable !","Trop fort !","Exact !"];
 const ENCOURAGE_BAD = ["Presque ! Réessaie.","Pas tout à fait...","Encore un essai !","Regarde bien les colonnes.","Courage, tu vas y arriver !"];
 
-// Daily challenge: a fixed mix, no level choice — indices into MULT_LEVELS / DIV_LEVELS
-// (2=Expert, 3=Maître, 4=Champion). Shuffled fresh each time the challenge starts.
-const DAILY_MULT_PLAN = [2,2,2,2,3,3,3,4,4,4]; // 4 Expert + 3 Maître + 3 Champion
-const DAILY_DIV_PLAN  = [2,2,2,2,3,3,3,4,4,4]; // same tiers, mirrored for division
+// Daily challenge: a fixed mix, no level choice — indices into MULT_LEVELS / DIV_LEVELS / SUB_LEVELS
+// (2=Expert, 3=Maître). Shuffled fresh each time the challenge starts.
+const DAILY_MULT_PLAN = [2,2,3,3]; // 2 Expert + 2 Maître
+const DAILY_DIV_PLAN  = [2,2,3,3]; // same tiers, mirrored for division
+const DAILY_SUB_PLAN  = [2,2,3,3]; // same tiers, mirrored for subtraction
+const DAILY_PASS_MIN = 3; // out of 4, needed in EACH operation to validate the day
 function shuffled(arr){
   const a = arr.slice();
   for(let i=a.length-1;i>0;i--){ const j=randInt(0,i); [a[i],a[j]]=[a[j],a[i]]; }
@@ -395,18 +425,20 @@ function showScreen(id){
   window.scrollTo(0,0);
 }
 
-function levelsForOp(op){ return op==='mult' ? MULT_LEVELS : DIV_LEVELS; }
-function starsArr(op){ return op==='mult' ? state.progress.mult : state.progress.div; }
+function levelsForOp(op){ return op==='mult' ? MULT_LEVELS : op==='div' ? DIV_LEVELS : SUB_LEVELS; }
+function starsArr(op){ return state.progress[op]; }
+function isDailyMode(){ return state.mode.indexOf('daily-')===0; }
 
 function starString(n){
   let s=''; for(let i=0;i<3;i++) s += i<n ? '⭐' : '☆'; return s;
 }
 
 function refreshHeader(){
-  document.getElementById('totalStars').textContent =
-    state.progress.mult.reduce((a,b)=>a+b,0) + state.progress.div.reduce((a,b)=>a+b,0);
-  document.getElementById('multStarsSummary').textContent = '⭐ ' + state.progress.mult.reduce((a,b)=>a+b,0) + '/15';
-  document.getElementById('divStarsSummary').textContent = '⭐ ' + state.progress.div.reduce((a,b)=>a+b,0) + '/15';
+  const sum = arr => arr.reduce((a,b)=>a+b,0);
+  document.getElementById('totalStars').textContent = sum(state.progress.mult) + sum(state.progress.div) + sum(state.progress.sub);
+  document.getElementById('multStarsSummary').textContent = '⭐ ' + sum(state.progress.mult) + '/15';
+  document.getElementById('divStarsSummary').textContent = '⭐ ' + sum(state.progress.div) + '/15';
+  document.getElementById('subStarsSummary').textContent = '⭐ ' + sum(state.progress.sub) + '/15';
   document.getElementById('muteBtn').textContent = state.settings.sound ? '🔊' : '🔇';
   document.getElementById('muteBtn').classList.toggle('muted', !state.settings.sound);
   updateDailyBanner();
@@ -419,7 +451,7 @@ function updateDailyBanner(){
     sub.textContent = '✅ Réussi aujourd\'hui — bravo !';
   } else {
     const streak = computeStreak();
-    sub.textContent = streak>0 ? `🔥 ${streak} jour(s) de suite — continue !` : '10 multiplications + 10 divisions';
+    sub.textContent = streak>0 ? `🔥 ${streak} jour(s) de suite — continue !` : '4 multiplications + 4 divisions + 4 soustractions';
   }
 }
 
@@ -441,7 +473,7 @@ function computeStreak(){
 function openLevelSelect(op){
   state.mode = 'practice';
   state.op = op;
-  document.getElementById('levelsTitle').textContent = op==='mult' ? '🧮 Multiplication' : '➗ Division';
+  document.getElementById('levelsTitle').textContent = OP_META[op].emoji + ' ' + OP_META[op].label;
   const list = document.getElementById('levelsList');
   list.innerHTML='';
   const levels = levelsForOp(op);
@@ -467,7 +499,7 @@ function openLevelSelect(op){
 function startLevel(op, idx){
   state.op = op; state.levelIdx = idx;
   state.series = { total:6, index:0, errorFree:0 };
-  document.getElementById('exerciseTitle').textContent = (op==='mult'?'🧮 ':'➗ ') + levelsForOp(op)[idx].name;
+  document.getElementById('exerciseTitle').textContent = OP_META[op].emoji + ' ' + levelsForOp(op)[idx].name;
   showScreen('screen-exercise');
   nextExercise();
 }
@@ -475,11 +507,10 @@ function startLevel(op, idx){
 function nextExercise(){
   state.series.index++;
   if(state.series.index > state.series.total){ finishSeries(); return; }
-  const isDaily = state.mode==='daily-mult' || state.mode==='daily-div';
+  const isDaily = isDailyMode();
   let counterText = `Exercice ${state.series.index}/${state.series.total}`;
   if(isDaily){
-    const errsSoFar = (state.series.index-1) - state.series.errorFree;
-    counterText += ` · erreurs ${errsSoFar}/3`;
+    counterText += ` · réussites ${state.series.errorFree}/${state.series.total} (min. ${DAILY_PASS_MIN})`;
   }
   document.getElementById('exerciseCounter').textContent = counterText;
   document.getElementById('exerciseProgressBar').style.width = ((state.series.index-1)/state.series.total*100)+'%';
@@ -491,13 +522,19 @@ function nextExercise(){
   const exMode = isDaily ? 'test' : 'guided';
   if(state.op==='mult'){
     state.current = new MultExercise(cfg.gen(), exMode);
-  } else {
+  } else if(state.op==='div'){
     state.current = new DivExercise(cfg.gen(), exMode);
+  } else {
+    state.current = new SubtractionExercise(cfg.gen(), exMode);
   }
   state.current.render(document.getElementById('exercisePanel'));
 }
 
-function exerciseCompleted(hadError){
+// ex: the exercise instance that scheduled this call (via setTimeout, after answering correctly).
+// If the player has since abandoned it and started a different flow, state.current has moved on —
+// this stale timer must no-op instead of corrupting whatever series is now active.
+function exerciseCompleted(ex, hadError){
+  if(state.current !== ex) return;
   document.getElementById('exerciseProgressBar').style.width = (state.series.index/state.series.total*100)+'%';
   if(hadError){
     state.streak = 0;
@@ -510,21 +547,25 @@ function exerciseCompleted(hadError){
   saveProgress();
   document.getElementById('streakCount').textContent = state.streak;
   refreshHeader();
-  setTimeout(nextExercise, 900);
+  setTimeout(()=>{ if(state.current===ex) nextExercise(); }, 900);
 }
 
+const DAILY_PHASES = ['mult','div','sub'];
+
 function finishSeries(){
-  if(state.mode==='daily-mult'){
-    state.daily.multErrors = state.series.total - state.series.errorFree;
-    state.mode = 'daily-div'; state.op = 'div';
-    state.series = { total:10, index:0, errorFree:0 };
-    document.getElementById('exerciseTitle').textContent = '🗓️ Défi (2/2) — ➗ Division';
-    nextExercise();
-    return;
-  }
-  if(state.mode==='daily-div'){
-    state.daily.divErrors = state.series.total - state.series.errorFree;
-    finishDailyChallenge();
+  if(isDailyMode()){
+    const op = state.op;
+    state.daily[op+'Errors'] = state.series.total - state.series.errorFree;
+    const idx = DAILY_PHASES.indexOf(op);
+    if(idx < DAILY_PHASES.length-1){
+      const nextOp = DAILY_PHASES[idx+1];
+      state.mode = 'daily-'+nextOp; state.op = nextOp;
+      state.series = { total:state.dailyPlan[nextOp].length, index:0, errorFree:0 };
+      document.getElementById('exerciseTitle').textContent = `🗓️ Défi (${idx+2}/${DAILY_PHASES.length}) — ${OP_META[nextOp].emoji} ${OP_META[nextOp].label}`;
+      nextExercise();
+    } else {
+      finishDailyChallenge();
+    }
     return;
   }
   finishPracticeSeries();
@@ -555,27 +596,34 @@ function finishPracticeSeries(){
 }
 
 function startDailyChallenge(){
-  state.daily = { multErrors:0, divErrors:0 };
-  state.dailyPlan = { mult: shuffled(DAILY_MULT_PLAN), div: shuffled(DAILY_DIV_PLAN) };
+  state.daily = { multErrors:0, divErrors:0, subErrors:0 };
+  state.dailyPlan = { mult: shuffled(DAILY_MULT_PLAN), div: shuffled(DAILY_DIV_PLAN), sub: shuffled(DAILY_SUB_PLAN) };
   state.mode = 'daily-mult'; state.op = 'mult';
-  state.series = { total:10, index:0, errorFree:0 };
-  document.getElementById('exerciseTitle').textContent = '🗓️ Défi (1/2) — 🧮 Multiplication';
+  state.series = { total:state.dailyPlan.mult.length, index:0, errorFree:0 };
+  document.getElementById('exerciseTitle').textContent = `🗓️ Défi (1/${DAILY_PHASES.length}) — ${OP_META.mult.emoji} ${OP_META.mult.label}`;
   showScreen('screen-exercise');
   nextExercise();
 }
 
 function finishDailyChallenge(){
   const d = state.daily;
-  const success = d.multErrors<=3 && d.divErrors<=3;
-  state.calendar[todayKey()] = { status: success?'success':'fail', multErrors:d.multErrors, divErrors:d.divErrors };
+  const totals = { mult:state.dailyPlan.mult.length, div:state.dailyPlan.div.length, sub:state.dailyPlan.sub.length };
+  const oks = { mult:totals.mult-d.multErrors, div:totals.div-d.divErrors, sub:totals.sub-d.subErrors };
+  const success = DAILY_PHASES.every(op => oks[op]>=DAILY_PASS_MIN);
+  state.calendar[todayKey()] = {
+    status: success?'success':'fail',
+    multErrors:d.multErrors, divErrors:d.divErrors, subErrors:d.subErrors,
+    multTotal:totals.mult, divTotal:totals.div, subTotal:totals.sub,
+  };
   saveCalendar();
   refreshHeader();
 
+  const detail = `${oks.mult}/${totals.mult} multiplications, ${oks.div}/${totals.div} divisions et ${oks.sub}/${totals.sub} soustractions`;
   document.getElementById('summaryStars').textContent = success ? '🎉🏆🎉' : '💪';
   document.getElementById('summaryTitle').textContent = success ? 'Défi du jour réussi !' : 'Pas encore réussi...';
   document.getElementById('summaryText').textContent = success
-    ? `Bravo ! ${10-d.multErrors}/10 multiplications et ${10-d.divErrors}/10 divisions sans erreur (3 max autorisées). La case du jour passe en vert !`
-    : `${d.multErrors} erreur(s) en multiplication et ${d.divErrors} erreur(s) en division (3 max autorisées pour chaque). Réessaie pour valider la journée !`;
+    ? `Bravo ! ${detail} réussies (${DAILY_PASS_MIN} minimum dans chaque). La case du jour passe en vert !`
+    : `${detail} réussies — il faut ${DAILY_PASS_MIN} minimum dans chaque. Réessaie pour valider la journée !`;
 
   document.getElementById('btnNextLevel').style.display = 'none';
   document.getElementById('btnReplay').textContent = 'Refaire le défi';
@@ -620,7 +668,10 @@ function renderCalendar(){
     } else if(entry){
       cell.classList.add('clickable');
       cell.addEventListener('click', ()=>{
-        alert(`${key}\n${entry.status==='success'?'✅ Défi réussi':'❌ Défi non réussi'}\nErreurs multiplication : ${entry.multErrors}/10\nErreurs division : ${entry.divErrors}/10`);
+        const mt = entry.multTotal || 4, dt = entry.divTotal || 4;
+        let msg = `${key}\n${entry.status==='success'?'✅ Défi réussi':'❌ Défi non réussi'}\nMultiplication : ${mt-entry.multErrors}/${mt} bonnes\nDivision : ${dt-entry.divErrors}/${dt} bonnes`;
+        if(entry.subTotal){ msg += `\nSoustraction : ${entry.subTotal-entry.subErrors}/${entry.subTotal} bonnes`; }
+        alert(msg);
       });
     }
     grid.appendChild(cell);
@@ -711,6 +762,25 @@ function sumColumnsWithCarries(nums, totalCols){
     if(col>0) carriesIn[col-1] = c;
   }
   return { digitsOut, carriesIn, finalCarry:c };
+}
+// subtracting S from M (same digit count, S left-padded with zeros), column by column from the right.
+// same shape as multiplyWithCarries: the borrow used while computing column i is written above column
+// i-1 (one place to the left) — that's borrowsIn[i-1], set while processing column i.
+function subtractWithBorrows(Mdigits, Sdigits){
+  const n = Mdigits.length;
+  const digitsOut = new Array(n);
+  const borrowsIn = new Array(n).fill(0);
+  let borrow = 0;
+  for(let i=n-1;i>=0;i--){
+    let top = Mdigits[i] - borrow;
+    const s = Sdigits[i] || 0;
+    let borrowOut = 0;
+    if(top < s){ top += 10; borrowOut = 1; }
+    digitsOut[i] = top - s;
+    if(i>0) borrowsIn[i-1] = borrowOut;
+    borrow = borrowOut;
+  }
+  return { digitsOut, borrowsIn };
 }
 
 /* =========================================================
@@ -884,12 +954,12 @@ MultExercise.prototype.currentGroups = function(){
     const p = this.partials[this.stepIdx];
     groups.push(this.partialInputs[this.stepIdx]);
     if(this.partialCarryInputs[this.stepIdx].length){
-      groups.push({ inputs:this.partialCarryInputs[this.stepIdx], target:p.carriesIn.slice(0,this.aD.length-1) });
+      groups.push({ inputs:this.partialCarryInputs[this.stepIdx], target:p.carriesIn.slice(0,this.aD.length-1), isCarry:true });
     }
   } else {
     groups.push(this.sumInputs);
     if(this.sumCarryInputs && this.sumCarryInputs.length){
-      groups.push({ inputs:this.sumCarryInputs, target:this.sumCarries.slice(0,this.cols-1) });
+      groups.push({ inputs:this.sumCarryInputs, target:this.sumCarries.slice(0,this.cols-1), isCarry:true });
     }
   }
   return groups;
@@ -900,35 +970,44 @@ MultExercise.prototype.allGroups = function(){
   this.partials.forEach((p,idx)=>{
     groups.push(this.partialInputs[idx]);
     if(this.partialCarryInputs[idx].length){
-      groups.push({ inputs:this.partialCarryInputs[idx], target:p.carriesIn.slice(0,this.aD.length-1) });
+      groups.push({ inputs:this.partialCarryInputs[idx], target:p.carriesIn.slice(0,this.aD.length-1), isCarry:true });
     }
   });
   if(this.needsSum){
     groups.push(this.sumInputs);
     if(this.sumCarryInputs && this.sumCarryInputs.length){
-      groups.push({ inputs:this.sumCarryInputs, target:this.sumCarries.slice(0,this.cols-1) });
+      groups.push({ inputs:this.sumCarryInputs, target:this.sumCarries.slice(0,this.cols-1), isCarry:true });
     }
   }
   return groups;
 };
 
-MultExercise.prototype.checkStep = function(){
-  const groups = this.currentGroups();
-  let allOk=true, allFilled=true;
+// a blank carry box is accepted as "0" (that's how it's actually written on paper — you only
+// mark a carry when there is one). Digit boxes always require an explicit value.
+function checkGroups(groups){
+  let allFilled=true, hadWrong=false;
   groups.forEach(data=>{
     data.inputs.forEach((inp,i)=>{
-      if(inp.value===''){ allFilled=false; return; }
-      const ok = Number(inp.value)===data.target[i];
+      const blank = inp.value==='';
+      if(blank && !data.isCarry){ allFilled=false; return; }
+      const val = blank ? 0 : Number(inp.value);
+      const ok = val===data.target[i];
       inp.classList.remove('correct','wrong');
       inp.classList.add(ok?'correct':'wrong');
-      if(!ok) allOk=false;
+      if(!ok) hadWrong=true;
     });
   });
+  return { allFilled, hadWrong };
+}
+
+MultExercise.prototype.checkStep = function(){
+  const groups = this.currentGroups();
+  const { allFilled, hadWrong } = checkGroups(groups);
   if(!allFilled){
-    setFeedback('Remplis toutes les cases d\'abord (les retenues aussi).', false);
+    setFeedback('Remplis toutes les cases d\'abord.', false);
     return;
   }
-  if(allOk){
+  if(!hadWrong){
     sndOk();
     setFeedback(pick(ENCOURAGE_OK), true);
     this.checkBtn.disabled=true;
@@ -939,7 +1018,7 @@ MultExercise.prototype.checkStep = function(){
         this.activateStep();
         setFeedback('', true);
       } else {
-        exerciseCompleted(this.hadError); // panel gets replaced shortly; keep the button disabled meanwhile
+        exerciseCompleted(this, this.hadError); // panel gets replaced shortly; keep the button disabled meanwhile
       }
     }, 700);
   } else {
@@ -955,26 +1034,29 @@ MultExercise.prototype.checkStep = function(){
   }
 };
 
-// test mode: no per-row hints — fill in the whole grid, then a single check reveals every mistake in red.
+// test mode: no per-row hints while filling in — but a wrong answer can be corrected and re-checked
+// until it's right; it still counts as an error for the day's tally either way (this.hadError is sticky).
 MultExercise.prototype.checkAll = function(){
   const groups = this.allGroups();
-  let allFilled=true, hadWrong=false;
-  groups.forEach(data=>{
-    data.inputs.forEach((inp,i)=>{
-      if(inp.value===''){ allFilled=false; return; }
-      const ok = Number(inp.value)===data.target[i];
-      inp.classList.remove('correct','wrong');
-      inp.classList.add(ok?'correct':'wrong');
-      if(!ok) hadWrong=true;
-    });
-  });
+  const { allFilled, hadWrong } = checkGroups(groups);
   if(!allFilled){ setFeedback('Remplis toutes les cases avant de valider.', false); return; }
-  this.hadError = hadWrong;
+  if(hadWrong){
+    this.hadError = true;
+    sndBad();
+    setFeedback('Corrige les cases en rouge, puis valide à nouveau.', false);
+    setTimeout(()=>{
+      groups.forEach(data=>{
+        data.inputs.forEach(inp=>{ if(inp.classList.contains('wrong')){ inp.value=''; inp.classList.remove('wrong'); } });
+      });
+      for(const data of groups){ const w = data.inputs.find(inp=>inp.value===''); if(w){ w.focus(); break; } }
+    }, 600);
+    return;
+  }
+  sndOk();
+  setFeedback(pick(ENCOURAGE_OK), true);
   this.checkBtn.disabled = true;
   groups.forEach(data=> data.inputs.forEach(inp=> inp.disabled=true));
-  if(hadWrong){ sndBad(); setFeedback('Certaines cases étaient fausses (en rouge).', false); }
-  else { sndOk(); setFeedback(pick(ENCOURAGE_OK), true); }
-  setTimeout(()=> exerciseCompleted(this.hadError), 1300);
+  setTimeout(()=> exerciseCompleted(this, this.hadError), 1000);
 };
 
 /* =========================================================
@@ -1154,7 +1236,7 @@ DivExercise.prototype.checkStep = function(){
         setFeedback('', true);
       } else {
         this.appendFinalMessage();
-        setTimeout(()=>exerciseCompleted(this.hadError), 1000);
+        setTimeout(()=>exerciseCompleted(this, this.hadError), 1000);
       }
     }, 700);
   } else {
@@ -1177,6 +1259,8 @@ DivExercise.prototype.appendFinalMessage = function(){
 };
 
 // test mode: no per-step hints — fill in every step, then a single check reveals every mistake in red.
+// test mode: fill in everything, then check — a wrong answer can be corrected and re-checked until
+// it's right; it still counts as an error for the day's tally either way (this.hadError is sticky).
 DivExercise.prototype.checkAll = function(){
   const all = [];
   this.steps.forEach((step,i)=>{
@@ -1193,13 +1277,140 @@ DivExercise.prototype.checkAll = function(){
     if(!ok) hadWrong=true;
   });
   if(!allFilled){ setFeedback('Remplis toutes les cases avant de valider.', false); return; }
-  this.hadError = hadWrong;
+  if(hadWrong){
+    this.hadError = true;
+    sndBad();
+    setFeedback('Corrige les cases en rouge, puis valide à nouveau.', false);
+    setTimeout(()=>{
+      all.forEach(o=>{ if(o.input.classList.contains('wrong')){ o.input.value=''; o.input.classList.remove('wrong'); } });
+      const w = all.find(o=>o.input.value==='');
+      if(w) w.input.focus();
+    }, 600);
+    return;
+  }
   this.checkBtn.disabled = true;
   all.forEach(o=> o.input.disabled=true);
   this.appendFinalMessage();
-  if(hadWrong){ sndBad(); setFeedback('Certaines cases étaient fausses (en rouge).', false); }
-  else { sndOk(); setFeedback(pick(ENCOURAGE_OK), true); }
-  setTimeout(()=> exerciseCompleted(this.hadError), 1300);
+  sndOk(); setFeedback(pick(ENCOURAGE_OK), true);
+  setTimeout(()=> exerciseCompleted(this, this.hadError), 1000);
+};
+
+/* =========================================================
+   SUBTRACTION EXERCISE (posed, with borrows)
+   ========================================================= */
+function SubtractionExercise(op, mode){
+  this.testMode = mode==='test';
+  this.a = op.a; this.b = op.b; // a = minuend (top), b = subtrahend (bottom), a >= b always
+  this.aD = digits(this.a);
+  this.bD = digits(this.b);
+  const bPadded = new Array(this.aD.length).fill(0);
+  for(let i=0;i<this.bD.length;i++) bPadded[this.aD.length - this.bD.length + i] = this.bD[i];
+  const sub = subtractWithBorrows(this.aD, bPadded);
+  this.result = this.a - this.b;
+  this.resultDigits = sub.digitsOut; // length = aD.length, may include a leading 0
+  this.borrowsIn = sub.borrowsIn;
+  this.hadError = false;
+}
+
+SubtractionExercise.prototype.render = function(panel){
+  panel.innerHTML='';
+  const gridWrap = document.createElement('div'); gridWrap.className='gridwrap';
+  const grid = document.createElement('div'); grid.className='mgrid';
+  const cols = this.aD.length;
+  grid.style.gridTemplateColumns = `1.4rem repeat(${cols}, clamp(2rem,8vw,2.6rem))`;
+  this.grid = grid; this.cols = cols;
+
+  const placeRow = (rowEls, colOffset)=>{
+    rowEls.forEach((el,i)=>{ el.style.gridColumn = (2 + colOffset + i); grid.appendChild(el); });
+  };
+
+  // borrow row, directly above the minuend — a single subtraction has no shifted passes to
+  // conflict with, so (unlike multiplication) one row of boxes is all that's ever needed.
+  const showBorrows = state.settings.carry && cols>1;
+  this.borrowInputs = [];
+  if(showBorrows){
+    const borrowWrap=[];
+    for(let i=0;i<cols-1;i++){ const c=makeInputCell('carry'); borrowWrap.push(c.wrap); this.borrowInputs.push(c.input); }
+    placeRow(borrowWrap, 0);
+    wireAutoAdvance(this.borrowInputs);
+  }
+
+  // minuend row
+  const rowA=[makeCell('sign')];
+  this.aD.forEach(d=>{ const c=makeCell('static'); c.textContent=d; rowA.push(c); });
+  placeRow(rowA.slice(1), 0);
+  grid.appendChild(rowA[0]); rowA[0].style.gridColumn=1;
+
+  // subtrahend row
+  const signB = makeCell('sign'); signB.textContent='−'; signB.style.gridColumn=1;
+  grid.appendChild(signB);
+  const rowB=[];
+  this.bD.forEach(d=>{ const c=makeCell('static'); c.textContent=d; rowB.push(c); });
+  placeRow(rowB, cols - this.bD.length);
+
+  const hr=document.createElement('div'); hr.className='hline'; grid.appendChild(hr);
+
+  // result row
+  const resWrap=[], resInput=[];
+  for(let i=0;i<cols;i++){ const c=makeInputCell(); resWrap.push(c.wrap); resInput.push(c.input); }
+  placeRow(resWrap, 0);
+  wireAutoAdvance(resInput);
+  this.resultInputs = { inputs:resInput, target:this.resultDigits };
+
+  gridWrap.appendChild(grid);
+  panel.appendChild(gridWrap);
+
+  const label=document.createElement('div');
+  label.style.cssText='text-align:center;font-weight:700;margin:6px 0 2px;color:#6b6684;font-size:.85rem;';
+  label.textContent = this.testMode ? `${this.a} − ${this.b} — remplis tout, puis valide` : `Calcule ${this.a} − ${this.b}`;
+  panel.appendChild(label);
+  this.label = label;
+
+  const actions=document.createElement('div'); actions.className='actions';
+  const checkBtn=document.createElement('button'); checkBtn.className='btn primary';
+  checkBtn.textContent = this.testMode ? 'Valider tout' : 'Vérifier';
+  actions.appendChild(checkBtn);
+  panel.appendChild(actions);
+  this.checkBtn = checkBtn;
+  checkBtn.addEventListener('click', ()=> this.check());
+
+  setTimeout(()=>{
+    const first = showBorrows ? this.borrowInputs[0] : resInput[0];
+    first.focus();
+  }, 50);
+};
+
+SubtractionExercise.prototype.groups = function(){
+  const groups = [ this.resultInputs ];
+  if(this.borrowInputs.length){
+    groups.push({ inputs:this.borrowInputs, target:this.borrowsIn.slice(0,this.cols-1), isCarry:true });
+  }
+  return groups;
+};
+
+// a single computation, no per-row steps — but same rule as everywhere else: wrong cells can be
+// corrected and re-checked until right; it still counts as an error for the day's tally either way.
+SubtractionExercise.prototype.check = function(){
+  const groups = this.groups();
+  const { allFilled, hadWrong } = checkGroups(groups);
+  if(!allFilled){ setFeedback('Remplis toutes les cases d\'abord.', false); return; }
+  if(hadWrong){
+    this.hadError = true;
+    sndBad();
+    setFeedback(this.testMode ? 'Corrige les cases en rouge, puis valide à nouveau.' : pick(ENCOURAGE_BAD), false);
+    setTimeout(()=>{
+      groups.forEach(data=>{
+        data.inputs.forEach(inp=>{ if(inp.classList.contains('wrong')){ inp.value=''; inp.classList.remove('wrong'); } });
+      });
+      for(const data of groups){ const w = data.inputs.find(inp=>inp.value===''); if(w){ w.focus(); break; } }
+    }, 600);
+    return;
+  }
+  sndOk();
+  setFeedback(pick(ENCOURAGE_OK), true);
+  this.checkBtn.disabled = true;
+  groups.forEach(data=> data.inputs.forEach(inp=> inp.disabled=true));
+  setTimeout(()=> exerciseCompleted(this, this.hadError), 1000);
 };
 
 /* ---------- shared feedback ---------- */
@@ -1228,18 +1439,18 @@ document.getElementById('calCta').addEventListener('click', ()=> startDailyChall
 
 document.getElementById('levelsBack').addEventListener('click', ()=> showScreen('screen-menu'));
 document.getElementById('exerciseBack').addEventListener('click', ()=>{
-  if(state.mode==='daily-mult' || state.mode==='daily-div'){
+  if(isDailyMode()){
     if(confirm('Abandonner le défi du jour en cours ?')){ renderCalendar(); showScreen('screen-calendar'); }
   } else {
     openLevelSelect(state.op);
   }
 });
 document.getElementById('btnMenu').addEventListener('click', ()=>{
-  if(state.mode==='daily-mult' || state.mode==='daily-div'){ renderCalendar(); showScreen('screen-calendar'); }
+  if(isDailyMode()){ renderCalendar(); showScreen('screen-calendar'); }
   else showScreen('screen-menu');
 });
 document.getElementById('btnReplay').addEventListener('click', ()=>{
-  if(state.mode==='daily-mult' || state.mode==='daily-div'){ startDailyChallenge(); }
+  if(isDailyMode()){ startDailyChallenge(); }
   else startLevel(state.op, state.levelIdx);
 });
 document.getElementById('btnNextLevel').addEventListener('click', ()=> startLevel(state.op, state.levelIdx+1));
@@ -1255,7 +1466,7 @@ document.getElementById('toggleSound').addEventListener('click', function(){
 });
 document.getElementById('btnReset').addEventListener('click', ()=>{
   if(confirm('Réinitialiser toute la progression ?')){
-    state.progress = Object.assign({}, DEFAULT_PROGRESS, {mult:[0,0,0,0,0], div:[0,0,0,0,0]});
+    state.progress = Object.assign({}, DEFAULT_PROGRESS, {mult:[0,0,0,0,0], div:[0,0,0,0,0], sub:[0,0,0,0,0]});
     saveProgress(); refreshHeader(); showScreen('screen-menu');
   }
 });
